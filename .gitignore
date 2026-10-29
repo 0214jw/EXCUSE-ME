@@ -1,0 +1,34 @@
+# Environment and secret configuration
+.env
+.env.*
+*.env
+secrets/
+secrets.json
+secrets.yaml
+secrets.yml
+credentials.json
+*.pem
+*.key
+!.env.example
+
+# Dependencies and Python cache
+.venv/
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Build output and logs
+dist/
+logs/
+*.log
+
+# SQLite databases and journal files
+*.db
+*.sqlite
+*.sqlite3
+*.db-*
+*.sqlite-*
+*.sqlite3-*
+
+# User-uploaded files (at any directory depth)
+uploads/
