@@ -1,100 +1,70 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import HealthCheck from './HealthCheck.jsx'
+import { GalleryPage, HomePage } from './MuseumPages.jsx'
 
-const apiBaseUrl = (
-  import.meta.env.VITE_API_BASE_URL?.trim() || 'http://127.0.0.1:8000'
-).replace(/\/+$/, '')
+const notices = {
+  submit: { title: '작품 기증은 준비 중입니다.', message: '아직 작품을 등록할 수 없습니다. 지금은 디자인 확인용 샘플 전시를 둘러보세요.' },
+  detail: { title: '작품 감상실은 준비 중입니다.', message: '현재 카드는 디자인 확인용 샘플입니다. 작품의 실제 상세 조회와 명작 인정 기능은 다음 개발 단계에서 만나요.' },
+  hall: { title: '명예의 전당은 준비 중입니다.', message: '실제 투표와 순위는 아직 제공하지 않습니다. 전시관의 인기순은 가상 인정 수로 정렬하는 샘플입니다.' },
+}
 
-const statusLabels = {
-  idle: '확인 전',
-  loading: '확인 중',
-  success: '연결 성공',
-  error: '연결 실패',
+function Brand() {
+  return <a className="brand" href="/" aria-label="EXCUSE ME! 박물관 홈"><span className="brand-symbol" aria-hidden="true">✳</span><span>EXCUSE ME!<small>THE MUSEUM OF EXCUSES</small></span></a>
 }
 
 export default function App() {
-  const [connection, setConnection] = useState({
-    status: 'idle',
-    message: '버튼을 눌러 서버 연결 상태를 확인해 주세요.',
-    response: null,
-  })
+  // Plain links use Vite's SPA fallback, with native history and direct URL access.
+  // These public pages do not require an additional routing library.
+  const path = window.location.pathname.replace(/\/+$/, '') || '/'
+  const dialogRef = useRef(null)
+  const [notice, setNotice] = useState(notices.submit)
 
-  async function checkConnection() {
-    setConnection({
-      status: 'loading',
-      message: '서버 응답을 기다리고 있습니다.',
-      response: null,
-    })
-
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/health`, {
-        cache: 'no-store',
-        signal: AbortSignal.timeout(5000),
-      })
-
-      if (!response.ok) {
-        setConnection({
-          status: 'error',
-          message: `서버가 오류를 반환했습니다. (HTTP ${response.status}) 다시 시도해 주세요.`,
-          response: null,
-        })
-        return
-      }
-
-      const data = await response.json()
-      if (data?.status !== 'ok') {
-        setConnection({
-          status: 'error',
-          message: '서버 응답이 예상한 형식과 다릅니다. 서버 설정을 확인해 주세요.',
-          response: null,
-        })
-        return
-      }
-
-      setConnection({
-        status: 'success',
-        message: '서버에 정상적으로 연결되었습니다.',
-        response: data,
-      })
-    } catch (error) {
-      let message = '서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인한 뒤 다시 시도해 주세요.'
-      if (error.name === 'TimeoutError') {
-        message = '5초 안에 서버 응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요.'
-      } else if (error instanceof SyntaxError) {
-        message = '서버 응답을 읽을 수 없습니다. 서버 설정을 확인해 주세요.'
-      }
-      setConnection({ status: 'error', message, response: null })
-    }
+  function onUnavailable(kind) {
+    setNotice(notices[kind])
+    if (!dialogRef.current.open) dialogRef.current.showModal()
   }
 
-  const isLoading = connection.status === 'loading'
+  let page
+  if (path === '/') page = <HomePage onUnavailable={onUnavailable} />
+  else if (path === '/gallery') page = <GalleryPage onUnavailable={onUnavailable} />
+  else if (path === '/health') page = <HealthCheck />
+  else {
+    const futurePage = path === '/submit' ? notices.submit : path === '/hall-of-fame' ? notices.hall : /^\/artworks\/[^/]+$/.test(path) ? notices.detail : null
+    page = (
+      <main id="main-content" className="page-width placeholder-page">
+        <p className="eyebrow">EXCUSE ME! / INFORMATION</p>
+        <h1 className="section-title">{futurePage?.title || '전시실을 찾을 수 없습니다.'}</h1>
+        <p>{futurePage?.message || '주소를 확인하거나 상설 전시관으로 돌아가 주세요.'}</p>
+        <a className="museum-button primary" href="/gallery">전시관으로 돌아가기 ↗</a>
+      </main>
+    )
+  }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-5 py-12 text-slate-900">
-      <section aria-labelledby="page-title" className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
-        <h1 id="page-title" className="text-4xl font-black tracking-tight sm:text-5xl">EXCUSE ME!</h1>
-        <p className="mt-4 leading-relaxed text-slate-600">서버 연결을 확인해 보세요.</p>
-
-        <button
-          type="button"
-          onClick={checkConnection}
-          disabled={isLoading}
-          className="mt-8 w-full cursor-pointer rounded-lg bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-slate-900 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
-        >
-          {isLoading ? '연결 확인 중…' : '서버 연결 확인'}
-        </button>
-
-        <div role="status" aria-live="polite" aria-atomic="true" className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <p className={`font-semibold ${connection.status === 'error' ? 'text-red-700' : connection.status === 'success' ? 'text-emerald-700' : 'text-slate-700'}`}>
-            {statusLabels[connection.status]}
-          </p>
-          <p className="mt-2 break-words text-sm leading-relaxed text-slate-600">{connection.message}</p>
-          {connection.response && (
-            <pre className="mt-4 overflow-x-auto rounded-md bg-slate-900 p-4 text-sm text-emerald-300">
-              <code>{JSON.stringify(connection.response)}</code>
-            </pre>
-          )}
+    <>
+      <a className="skip-link" href="#main-content">본문으로 건너뛰기</a>
+      <header className="site-header">
+        <div className="page-width header-inner">
+          <Brand />
+          <nav aria-label="상단 내비게이션">
+            <a href="/" aria-current={path === '/' ? 'page' : undefined}>박물관 소개</a>
+            <a href="/gallery" aria-current={path === '/gallery' ? 'page' : undefined}>상설 전시관</a>
+            <button type="button" onClick={() => onUnavailable('hall')}>명예의 전당<span className="coming-soon">준비 중</span></button>
+          </nav>
+          <button className="header-donate" type="button" onClick={() => onUnavailable('submit')}>작품 기증하기 <span aria-hidden="true">↗</span></button>
         </div>
-      </section>
-    </main>
+      </header>
+      {page}
+      <footer className="site-footer">
+        <div className="page-width footer-top"><Brand /><p>모든 변명에는, 나름의 사정이 있다.</p><a className="health-link" href="/health" aria-current={path === '/health' ? 'page' : undefined}>서버 연결 확인 ↗</a></div>
+        <div className="page-width footer-bottom"><span>EXCUSE ME! · ABSURD ART MUSEUM</span><span>디자인 확인용 데모 · 실제 작품 저장 없음</span></div>
+      </footer>
+      <dialog ref={dialogRef} className="museum-dialog" aria-labelledby="notice-title" aria-describedby="notice-message">
+        <p className="eyebrow">COMING SOON</p>
+        <h2 id="notice-title">{notice.title}</h2>
+        <p id="notice-message">{notice.message}</p>
+        <form method="dialog"><button className="museum-button primary" autoFocus>확인</button></form>
+      </dialog>
+    </>
   )
 }
