@@ -1,0 +1,10 @@
+Asset: the-birth-of-an-excuse-cutout.png
+Source: OpenAI built-in image_gen, background-extraction edit of the project's generated the-birth-of-an-excuse.png.
+Created: 2026-10-30 (Asia/Seoul)
+Size: 1024 x 1536. Real RGBA PNG; transparent background pixels have alpha 0.
+Source asset (project-relative): frontend/src/assets/the-birth-of-an-excuse.png
+The output is copied unchanged. Not an external stock image or photograph of a real exhibition.
+No runtime AI generation feature is implemented.
+
+Final prompt:
+Edit target: the supplied local generated sculpture image. Use case: background-extraction. Create a production-ready transparent PNG cutout of the SAME fictional ivory plaster human sculpture: fully clothed, sitting on a geometric seat, chin resting on one hand in a thinking pose. Preserve sculptural anatomy, face, hair, shirt folds, trousers, shoes, material and gentle existing directional lighting. Retain the geometric seat but REMOVE the broad rectangular floor plinth and the small folded paper object. Remove the ENTIRE gallery room, window, wall, floor, sunlight patterns and background shadow: all pixels outside the actual sculpture and seat must be genuine alpha transparency, not white or a checkerboard drawn into the image. No colored backdrop, no gallery, no text, no watermark. Center the entire seated sculpture tightly in a portrait canvas, with all hair, hands, elbows, legs, shoes and seat intact, 3-5 percent transparent padding around the object. The figure should fill almost all canvas height. Refined photographic cutout of a real-looking sculpture, NOT an illustration, emoji, mascot or new character. This cutout will be layered in front of oversized burgundy typography on a #F9FAFB museum poster webpage.

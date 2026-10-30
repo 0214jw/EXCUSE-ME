@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { categories, sampleArtworks, sampleNumber, selectSampleArtworks } from './sampleArtworks.js'
+import HeroExhibition from './HeroExhibition.jsx'
 
 function Arrow() {
   return <span aria-hidden="true">↗</span>
@@ -40,27 +41,9 @@ function SampleNotice({ detailed = false }) {
 }
 
 export function HomePage({ onUnavailable }) {
-  const featured = sampleArtworks[0]
   return (
     <main id="main-content">
-      <section className="hero page-width" aria-labelledby="hero-title">
-        <div className="hero-copy">
-          <p className="eyebrow"><span className="tiny-star" aria-hidden="true">✳</span> ABSURD ART MUSEUM</p>
-          <h1 id="hero-title">세상에서 가장<br />쓸데없고,<br />가장 <em>창의적인</em><br />변명들의 박물관</h1>
-          <p className="hero-description">누군가의 황당한 핑계가, 누군가에겐 한 편의 명작.<br className="desktop-break" /> 일상의 변명을 전시하고 함께 웃는 작은 박물관입니다.</p>
-          <div className="hero-actions">
-            <a className="museum-button primary" href="/gallery">전시 관람하기 <Arrow /></a>
-            <button className="museum-button secondary" type="button" onClick={() => onUnavailable('submit')}>작품 기증하기 <span aria-hidden="true">＋</span></button>
-          </div>
-          <p className="hero-footnote">입장료는 없습니다. 그럴듯한 변명 하나면 충분합니다.</p>
-        </div>
-        <div className="hero-exhibit">
-          <div className="exhibit-topline"><span>THIS WEEK’S SAMPLE</span><span>COLLECTION / 001</span></div>
-          <div className="hero-frame"><div className="hero-canvas"><span className="canvas-edition">A STUDY OF EVERYDAY EXCUSES</span><span className="hero-quote">“의지는<br />있었으나,<br /><em>중력이</em><br />강했습니다.”</span><span className="canvas-signature">— {featured.author}</span></div></div>
-          <div className="exhibit-caption"><div><span className="eyebrow">SAMPLE № {sampleNumber(featured.id)} / 지각</span><p>{featured.title}</p></div><span className="museum-seal" aria-label="변명도 예술이 된다">변명도<br />예술이 된다</span></div>
-          <p className="exhibit-note">디자인 확인용 샘플 작품 · 가상 작가</p>
-        </div>
-      </section>
+      <HeroExhibition onUnavailable={onUnavailable} />
 
       <section className="museum-intro" aria-label="박물관 소개"><div className="page-width intro-inner"><p className="eyebrow">EVERY EXCUSE TELLS A STORY.</p><p>그럴듯하지 않아도 괜찮습니다.<br /><strong>어쩌면, 그래서 더 예술적이니까요.</strong></p><span className="intro-symbol" aria-hidden="true">✳</span></div></section>
 
