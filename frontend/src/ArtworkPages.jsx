@@ -7,6 +7,9 @@ import { SampleCollection } from './MuseumPages.jsx'
 import ArtworkExhibition from './ArtworkExhibition.jsx'
 import ArtworkCreation from './ArtworkCreation.jsx'
 import { imageDonationBlockReason } from './artworkCreation.js'
+import useCurator from './useCurator.js'
+import { CuratorDescription, CuratorSuggestions } from './CuratorPanel.jsx'
+import { curatorDonationFields } from './curatorState.js'
 
 const filters = ['전체', ...artworkCategories]
 const formatDate = (date) => new Intl.DateTimeFormat('ko-KR', {
@@ -80,6 +83,7 @@ export function GalleryPage({ onUnavailable }) {
 
 export function SubmitPage() {
   const [values, setValues] = useState({ title: '', content: '', category: '', author: '' })
+  const curator = useCurator(values)
   const [errors, setErrors] = useState({})
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
@@ -92,12 +96,14 @@ export function SubmitPage() {
     const { name, value } = event.target
     const next = { ...values, [name]: value }
     setValues(next)
+    if (name !== 'author' && value !== values[name]) curator.dispatch({ type: 'input_changed' })
     if (errors[name]) setErrors((current) => ({ ...current, [name]: validateArtwork(next)[name] }))
   }
 
   async function submit(event) {
     event.preventDefault()
     if (busy.current) return
+    if (curator.state.status === 'loading') return
     // UI previews are never a completed image donation. Guard Enter/programmatic
     // submissions as well as disabling the visible submit button below.
     const blocked = imageDonationBlockReason(creationMode)
@@ -116,7 +122,7 @@ export function SubmitPage() {
     busy.current = true
     setSaving(true)
     try {
-      const payload = { ...normalizeArtwork(values), visitor_id: getVisitorId() }
+      const payload = { ...normalizeArtwork(values), ...curatorDonationFields(curator.state), visitor_id: getVisitorId() }
       const fingerprint = JSON.stringify(payload)
       if (pending.current?.fingerprint !== fingerprint) pending.current = { fingerprint, id: createRequestId() }
       const artwork = await artworkRequest('/api/artworks', { ...payload, request_id: pending.current.id })
@@ -141,15 +147,21 @@ export function SubmitPage() {
           <p className="form-caption">작품 기증서 <span>* 필수 항목</span></p>
           <fieldset disabled={saving}>
             <div className="form-field"><label htmlFor="title">작품명 <span>*</span></label><input id="title" name="title" value={values.title} onChange={update} required aria-invalid={Boolean(errors.title)} aria-describedby={description('title')} placeholder="이 핑계에 어울리는 이름을 붙여 주세요" /><p id="title-hint" className="field-hint">2~50자 <span>{characterCount(trimText(values.title))} / 50</span></p>{errors.title && <p id="title-error" className="field-error">{errors.title}</p>}</div>
+            <CuratorSuggestions curator={curator} values={values} saving={saving} onChooseTitle={(title) => {
+              setValues((current) => ({ ...current, title }))
+              setErrors((current) => ({ ...current, title: undefined }))
+              curator.dispatch({ type: 'input_changed' })
+            }} />
             <div className="form-field"><label htmlFor="content">핑계 내용 <span>*</span></label><textarea id="content" name="content" rows="6" value={values.content} onChange={update} required aria-invalid={Boolean(errors.content)} aria-describedby={description('content')} placeholder="그날의 사정, 나름의 이유를 들려주세요." /><p id="content-hint" className="field-hint">10~300자 · 앞뒤 공백 제외 <span>{characterCount(trimText(values.content))} / 300</span></p>{errors.content && <p id="content-error" className="field-error">{errors.content}</p>}</div>
             <div className="form-field"><label htmlFor="category">카테고리 <span>*</span></label><select id="category" name="category" value={values.category} onChange={update} required aria-invalid={Boolean(errors.category)} aria-describedby={description('category')}><option value="">작품의 카테고리를 선택해 주세요</option>{artworkCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select><p id="category-hint" className="field-hint">다섯 가지 중 한 가지를 골라 주세요.</p>{errors.category && <p id="category-error" className="field-error">{errors.category}</p>}</div>
             <div className="form-field"><label htmlFor="author">작가명 <small>선택</small></label><input id="author" name="author" value={values.author} onChange={update} aria-invalid={Boolean(errors.author)} aria-describedby={description('author')} placeholder="익명의 예술가" /><p id="author-hint" className="field-hint">비워두면 익명의 예술가 <span>{characterCount(trimText(values.author))} / 20</span></p>{errors.author && <p id="author-error" className="field-error">{errors.author}</p>}</div>
+            <CuratorDescription curator={curator} />
             <ArtworkCreation mode={creationMode} onModeChange={(mode) => { setCreationMode(mode); setMessage('') }} />
           </fieldset>
           <p className="visitor-note">회원가입 없이 참여하는 데모입니다. 브라우저에 임시 방문객 ID를 보관하며 실제 인증 수단은 아닙니다. 저장 정보를 지우면 이전 ID를 잃을 수 있습니다.</p>
           {message && <div className="error-notice form-error" role="alert" tabIndex="-1" ref={errorRef}><p>{message}</p><a className="text-link" href="/gallery">전시관에서 확인하기 ↗</a></div>}
-          <div className="form-actions"><a className="text-link" href="/gallery">전시관으로 돌아가기</a><button className="museum-button primary" type="submit" disabled={saving || creationMode !== 'text'}>{saving ? '작품을 기증하는 중…' : creationMode !== 'text' ? '이미지 작품 기증 준비 중' : '텍스트 작품 기증하기 ＋'}</button></div>
-          <p className="field-hint" role="status" aria-live="polite">{saving ? '기증 결과를 기다리고 있습니다. 잠시만 기다려 주세요.' : creationMode !== 'text' ? '이미지 방식을 선택한 상태에서는 기증할 수 없습니다.' : '기증이 완료되면 작품 감상실로 안내합니다.'}</p>
+          <div className="form-actions"><a className="text-link" href="/gallery">전시관으로 돌아가기</a><button className="museum-button primary" type="submit" disabled={saving || curator.state.status === 'loading' || creationMode !== 'text'}>{saving ? '작품을 기증하는 중…' : curator.state.status === 'loading' ? 'AI 추천 응답을 기다리는 중…' : creationMode !== 'text' ? '이미지 작품 기증 준비 중' : '텍스트 작품 기증하기 ＋'}</button></div>
+          <p className="field-hint" role="status" aria-live="polite">{saving ? '기증 결과를 기다리고 있습니다. 잠시만 기다려 주세요.' : curator.state.status === 'loading' ? '추천 요청이 끝나면 결과를 확인한 뒤 기증할 수 있습니다.' : creationMode !== 'text' ? '이미지 방식을 선택한 상태에서는 기증할 수 없습니다.' : '기증이 완료되면 작품 감상실로 안내합니다.'}</p>
         </form>
       </div>
     </main>

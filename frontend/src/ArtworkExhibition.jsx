@@ -41,6 +41,7 @@ export default function ArtworkExhibition({ artwork }) {
           <p className="detail-description-text">{description.text}</p>
           {description.temporary && <p className="detail-description-note">원문 핑계를 바탕으로 한 임시 설명입니다.</p>}
         </section>
+        <details className="detail-original"><summary>원문 핑계 확인하기</summary><p>{artwork.content}</p></details>
         <dl>
           <div><dt>기증 날짜</dt><dd><time dateTime={artwork.created_at}>{donatedAt}</time></dd></div>
           <div><dt>카테고리</dt><dd>{artwork.category}</dd></div>

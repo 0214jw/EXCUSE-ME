@@ -36,9 +36,10 @@ class ArtworkApiTests(unittest.TestCase):
     @classmethod
     def start_server(cls):
         cls.process = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", str(cls.port)],
+            [sys.executable, "-m", "uvicorn", getattr(cls, 'application', 'main:app'), "--host", "127.0.0.1", "--port", str(cls.port)],
             cwd=BACKEND,
-            env={**os.environ, "EXCUSE_ME_DB_PATH": str(cls.db_path)},
+            # Integration tests must never inherit a real provider key or make paid calls.
+            env={**os.environ, "EXCUSE_ME_DB_PATH": str(cls.db_path), "OPENAI_API_KEY": ""},
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         for _ in range(100):
@@ -234,7 +235,36 @@ class ArtworkApiTests(unittest.TestCase):
         self.assertEqual(detail["image_mode"], "photo")
         self.assertEqual(detail["image_style"], "oil")
         self.assertIn(detail, self.request("/api/artworks")[1])
-        self.assertEqual(self.request("/api/artworks", payload)[1], detail)
+        # A replay with a different final description must not silently overwrite it.
+        self.assertEqual(self.request("/api/artworks", payload)[0], 409)
+
+    def test_curator_key_missing_and_invalid_input_do_not_block_text_donation(self):
+        payload = self.payload()
+        payload.pop('author')
+        status, error, _ = self.request('/api/curator', payload)
+        self.assertEqual(status, 503)
+        self.assertIn('텍스트', error['detail'])
+        self.assertNotIn('titles', error)
+        self.assertEqual(self.request('/api/curator', {**payload, 'content': '짧음'})[0], 422)
+        self.assertEqual(self.request('/api/artworks', self.payload())[0], 201)
+
+    def test_only_confirmed_final_description_and_title_are_saved(self):
+        payload = self.payload(refined_description='사용자가 확인하고 직접 다듬은 작품 설명입니다.', description_confirmed=True)
+        status, created, _ = self.request('/api/artworks', payload)
+        self.assertEqual(status, 201)
+        self.assertEqual(created['refined_description'], payload['refined_description'])
+        self.assertEqual(created['content'], payload['content'])
+        self.assertEqual(created['title'], payload['title'])
+        self.assertEqual(self.request(f"/api/artworks/{created['id']}")[1], created)
+        self.assertEqual(self.request('/api/artworks', payload)[0], 200)
+        self.assertEqual(self.request('/api/artworks', {**payload, 'refined_description': '다르게 바꾼 최종 설명입니다.'})[0], 409)
+        self.assertEqual(self.request('/api/artworks', self.payload(refined_description='확인하지 않은 설명입니다.'))[0], 422)
+        self.assertEqual(self.request('/api/artworks', self.payload(refined_description='가' * 1001, description_confirmed=True))[0], 422)
+        self.assertEqual(self.request('/api/artworks', self.payload(titles=['후보 하나', '후보 둘', '후보 셋']))[0], 422)
+        with closing(sqlite3.connect(self.db_path)) as db:
+            columns = {row[1] for row in db.execute('PRAGMA table_info(artworks)')}
+        self.assertNotIn('titles', columns)
+        self.assertNotIn('description_confirmed', columns)
 
 
 if __name__ == "__main__":

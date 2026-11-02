@@ -101,7 +101,7 @@ function GeneratedCreation() {
   return (
     <div className="creation-options" id="generated-creation-options">
       <p className="creation-option-heading">핑계에서 시작하는 작품 <span className="creation-badge">준비 중</span></p>
-      <p className="creation-help">위에 작성한 핑계를 바탕으로 작품을 만드는 방식입니다. 지금은 화풍만 선택할 수 있으며 실제 AI 요청은 보내지 않습니다.</p>
+      <p className="creation-help">위에 작성한 핑계를 바탕으로 이미지를 만드는 방식입니다. 지금은 화풍만 선택할 수 있으며 실제 AI 이미지 생성 요청은 보내지 않습니다.</p>
       <StyleChoices name="generated_style" value={style} onChange={setStyle} />
       <CreationPreview generated />
       <button type="button" className="museum-button secondary creation-generate-button" disabled>AI 작품 제작 준비 중</button>

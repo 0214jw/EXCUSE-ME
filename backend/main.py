@@ -5,13 +5,14 @@ from datetime import datetime, timezone
 from typing import Annotated, Literal
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Path, Response
+from fastapi import FastAPI, HTTPException, Path, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, UUID4, field_validator
+from pydantic import BaseModel, ConfigDict, Field, UUID4, field_validator, model_validator
 
 from database import CATEGORIES, connection, initialize
+from curator import CuratorInput, CuratorResult, generate_curator
 
 
 @asynccontextmanager
@@ -41,6 +42,23 @@ class ArtworkInput(BaseModel):
     # A client-controlled demo identifier, never proof of identity or authorization.
     visitor_id: UUID4
     request_id: UUID4 = Field(default_factory=uuid4)
+    refined_description: str | None = Field(default=None, max_length=1000, strict=True)
+    description_confirmed: bool = Field(default=False, strict=True)
+
+    @field_validator("refined_description", mode="before")
+    @classmethod
+    def normalize_description(cls, value):
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("문자열을 입력해 주세요.")
+        return re.sub(r"^[\s\ufeff]+|[\s\ufeff]+$", "", value) or None
+
+    @model_validator(mode="after")
+    def require_description_confirmation(self):
+        if self.refined_description and not self.description_confirmed:
+            raise ValueError("작품 설명 확인이 필요합니다.")
+        return self
 
     @field_validator("title", "content", "author", mode="before")
     @classmethod
@@ -72,8 +90,8 @@ class ArtworkOutput(BaseModel):
     author: str
     created_at: str
     updated_at: str
-    # Read-only preparation for future server-side generation/media workflows.
-    # ArtworkInput deliberately stays text-only until those workflows exist.
+    # Only the final, user-confirmed description is accepted during donation.
+    # Image metadata remains read-only until image workflows exist.
     refined_description: str | None = None
     image_url: str | None = None
     image_mode: Literal["generated", "photo"] | None = None
@@ -90,6 +108,9 @@ async def invalid_input(request, exc):
         "visitor_id": "방문객 ID가 없거나 올바르지 않습니다. 브라우저 저장 설정을 확인해 주세요.",
         "request_id": "등록 요청 번호가 올바르지 않습니다. 화면을 새로 열어 주세요.",
         "artwork_id": "작품 번호는 1 이상의 정수여야 합니다.",
+        "refined_description": "작품 설명은 최대 1000자의 문자열로 입력해 주세요.",
+        "description_confirmed": "작품 설명 확인 여부를 선택해 주세요.",
+        "body": "작품 설명을 확인한 뒤 저장 여부를 선택해 주세요.",
     }
     errors = {}
     for error in exc.errors():
@@ -111,6 +132,11 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.post("/api/curator", response_model=CuratorResult)
+def curate(data: CuratorInput, request: Request):
+    return generate_curator(data, request.client.host if request.client else "unknown")
+
+
 @app.post("/api/artworks", response_model=ArtworkOutput, status_code=201)
 def create_artwork(artwork: ArtworkInput, response: Response):
     now = datetime.now(timezone.utc).isoformat(timespec="microseconds")
@@ -118,8 +144,8 @@ def create_artwork(artwork: ArtworkInput, response: Response):
     with connection() as db:
         cursor = db.execute("""
             INSERT INTO artworks
-                (title, content, category, author, visitor_id, request_id, created_at, updated_at)
-            VALUES (:title, :content, :category, :author, :visitor_id, :request_id, :now, :now)
+                (title, content, category, author, visitor_id, request_id, created_at, updated_at, refined_description)
+            VALUES (:title, :content, :category, :author, :visitor_id, :request_id, :now, :now, :refined_description)
             ON CONFLICT(visitor_id, request_id) DO NOTHING
         """, {**values, "now": now})
         row = db.execute(
@@ -127,7 +153,7 @@ def create_artwork(artwork: ArtworkInput, response: Response):
             (values["visitor_id"], values["request_id"]),
         ).fetchone()
         if cursor.rowcount == 0:
-            if any(row[key] != values[key] for key in ("title", "content", "category", "author")):
+            if any(row[key] != values[key] for key in ("title", "content", "category", "author", "refined_description")):
                 raise HTTPException(409, "이미 사용한 요청 번호입니다. 입력 내용을 확인해 주세요.")
             response.status_code = 200
         result = dict(row)

@@ -2,7 +2,7 @@
 
 일상 속 황당하고 창의적인 핑계를 예술 작품처럼 등록하고 감상하는 참여형 디지털 박물관.
 
-**Phase 1.5 설치미술 히어로와 Phase 2 텍스트 작품 기증·SQLite 저장·목록/상세 조회를 구현했습니다.** 상세 감상실·확장 필드에 이어 사진 미리보기와 사진/AI 제작 방식·화풍 선택 UI를 준비했습니다. 백엔드 테스트 **15개**, 프론트엔드 테스트 **16개**, 빌드가 통과했습니다. 사용자가 브라우저에서 사진 미리보기·방식/화풍 선택·이미지 기증 차단·텍스트 기증을 확인했으며, 나머지 미검증은 아래에 구분합니다. 실제 사진 서버 업로드·AI 생성/변환·수정/삭제·투표는 미구현입니다. 이번 저장 메시지는 `feat: Phase 2 작품 등록 및 제작 방식 선택 UI 구현`이며 최종 커밋·푸시 결과는 Git 기록과 작업 완료 보고로 확인합니다. 자세한 이력은 [PROGRESS.md](docs/PROGRESS.md)를 참고합니다.
+**Phase 1.5 히어로와 Phase 2 작품 기증·SQLite·조회·제작 방식 UI를 유지하면서 AI 큐레이터를 추가했습니다.** 사용자가 실제 OpenAI 작품명 3개 추천·미술관 스타일 작품 설명 표시·생성 결과 UI를 확인했습니다. **확인한 최종 설명의 저장·재조회는 코드/자동 검사 통과, 사용자 브라우저에서는 미검증**입니다. 백엔드 **27개**, 프론트엔드 **23개** 테스트와 빌드가 통과했습니다. 이번 Git 저장 작업은 추가 실제 AI 호출 없이 모의 응답으로 검사하며 기존 모델/API 설정을 유지합니다. 지정 저장 메시지는 `feat: AI 큐레이터 작품명 추천 및 작품 설명 생성`이고 최종 커밋·푸시 결과는 Git 기록과 완료 보고로 확인합니다. 실제 이미지 생성/변환·사진 서버 저장·수정/삭제·투표는 미구현입니다. 자세한 이력은 [PROGRESS.md](docs/PROGRESS.md)를 참고합니다.
 
 ## 1. 폴더 구성
 
@@ -177,7 +177,8 @@ Invoke-RestMethod http://127.0.0.1:8000/api/health | ConvertTo-Json -Compress
 | API | 동작 |
 | --- | --- |
 | `GET /api/health` | 기존 `{"status":"ok"}` 응답 |
-| `POST /api/artworks` | JSON `title`, `content`, `category`, 선택 `author`, UUID v4 `visitor_id`, 선택 UUID v4 `request_id`. 신규 저장은 201과 작품·Location 반환 |
+| `POST /api/artworks` | JSON `title`, `content`, `category`, 선택 `author`, UUID v4 `visitor_id`, 선택 UUID v4 `request_id`. 선택 `refined_description`은 `description_confirmed: true`일 때만 저장. 신규 저장은 201과 작품·Location 반환 |
+| `POST /api/curator` | 원문·현재 제목(빈 값 가능)·카테고리·방문객/요청 UUID를 보내 제목 3개와 작품 설명을 함께 추천. 작품은 저장하지 않음 |
 | `GET /api/artworks` | 작품 배열, 최신 등록순, 같은 등록 시각이면 ID 내림차순. 빈 DB는 `[]` |
 | `GET /api/artworks/{id}` | 작품 단건, 없는 작품 404, 잘못된 ID 422 |
 
@@ -202,7 +203,7 @@ npm.cmd test
 npm.cmd run build
 ```
 
-최신 백엔드 15개·프론트엔드 16개 테스트 및 빌드가 통과했습니다. 등록·목록·상세·잘못된 입력·새 카테고리·글자 수 경계·익명 작가·DB 오류·중복 재시도·서버 재시작 후 데이터 유지·health·CORS와 상세 확장 필드의 데이터 보존·표시를 확인했습니다. 제작 방식 선택 UI·이미지 기증 차단 규칙·사진 File/blob URL 읽기·해제 검사도 포함합니다. 프론트엔드는 순수 함수, 모의 fetch/localStorage, Node File/blob URL 및 실제 React 정적 HTML 검사이며 브라우저 동작을 대신하지 않습니다.
+현재 전체 백엔드 27개·프론트엔드 23개 테스트 및 빌드가 통과했습니다. 기존 등록·조회·입력·DB 보존·제작 UI 검사에 AI 큐레이터의 모의 응답·오류·한도·확인 후 설명 저장 검사를 추가했습니다. OpenAI 전송만 모의 처리한 실제 HTTP 생성/확인/기증 흐름도 검사합니다. 프론트엔드는 상태 로직·순수 함수·모의 fetch/localStorage·Node File/blob URL·React 정적 HTML 검사이며 브라우저 클릭이나 실제 OpenAI 호출을 대신하지 않습니다.
 
 브라우저 직접 확인 순서:
 
@@ -224,9 +225,9 @@ npm.cmd run build
 
 상세 화면 왼쪽은 액자와 이미지 자리, 오른쪽은 작품명·작가명·작품 설명·기증 날짜·카테고리·기증 버튼 순서입니다. 이미지가 없으면 **작품 이미지는 준비 중입니다.**, 별도 설명이 없으면 원문을 포함한 **임시 설명**을 표시합니다. 임시 설명을 DB에 저장하거나 원문을 덮어쓰지 않습니다. 작은 화면은 이미지 위·정보 아래로 배치합니다.
 
-향후 서버의 별도 GPT 처리 결과는 `refined_description`, 이미지 처리 결과는 `image_url`과 `image_mode`(`generated` / `photo`)·`image_style`(`watercolor`, `oil`, `pointillism`, `pencil`, `collage` 등)에 연결할 수 있습니다. `photo`는 향후 사진을 원본으로 하는 경로를 위한 값입니다. 결과 저장·검증용 서버 기능은 이후에 추가해야 하며 현재 기증 API는 이 필드 입력을 받지 않습니다. 화면의 `ArtworkExhibition.jsx`·`artworkPresentation.js`는 조회된 필드로 표시만 처리합니다.
+AI 큐레이터의 사용자 확인된 설명은 `refined_description`에 저장합니다. 향후 이미지 처리 결과를 위한 `image_url`·`image_mode`(`generated` / `photo`)·`image_style`(`watercolor`, `oil`, `pointillism`, `pencil`, `collage` 등)은 계속 준비 단계입니다. `photo`는 향후 사진을 원본으로 하는 경로를 위한 값입니다. 기증 API는 이미지 필드 입력을 받지 않습니다. 화면의 `ArtworkExhibition.jsx`·`artworkPresentation.js`는 조회된 필드로 표시합니다.
 
-실제 GPT·이미지 API, 사진 업로드·화풍 변환, 이미지 서빙은 구현하지 않았습니다. 임시 설명은 고정 문장과 원문을 조합한 표시이며 GPT 결과가 아닙니다. 새 상세 화면도 브라우저 배치·이미지 로드 실패·기증 버튼 클릭은 미검증입니다. 기존 작품 또는 새로 기증한 작품을 열어 정보 순서·이미지 준비 안내·임시 설명·모바일 배치를 직접 확인해 주세요.
+설명이 없는 기존 작품의 임시 설명은 고정 문장과 원문을 조합한 표시이며 GPT 결과가 아닙니다. 별도 설명이 있으면 이를 표시하고 `원문 핑계 확인하기`로 원문도 볼 수 있습니다. 이미지 API·사진 업로드·화풍 변환·이미지 서빙은 구현하지 않았습니다. 상세 화면의 브라우저 배치·이미지 실패·원문 펼치기·모바일은 직접 확인이 필요합니다.
 
 ## 12. 제작 방식 선택 UI와 사용자 브라우저 확인
 
@@ -249,4 +250,47 @@ npm.cmd run build
 
 모바일/다른 기기의 최종 배치, 키보드·접근성, 사진 오류·리소스 해제의 모든 브라우저 분기, localStorage 재방문/차단 환경, 서버 중단·응답 유실 후 입력/재시도 복구, 상세·필터·dialog·health의 전체 브라우저 회귀는 미검증입니다. 자세한 자동 검사 범위와 남은 사항은 PROGRESS에 기록했습니다.
 
-GPT 연결을 위한 원문과 별도 설명·이미지 필드 및 표시 UI 기반은 준비되어 있습니다. 실제 연결에는 별도 서버 서비스, 모델·비용·요청 제한·실패/재시도·결과 저장 정책이 필요합니다. 이번 Git 저장 작업에서는 연동하거나 Phase 3 이후 기능을 추가하지 않습니다.
+이 사진/AI 이미지 제작 UI와 별개로, 아래 AI 큐레이터는 제목과 해설만 추천합니다. 이미지 제작은 계속 준비 중이며 Phase 3 이후 기능은 추가하지 않았습니다.
+
+## 13. AI 큐레이터 사용과 안전한 키 설정
+
+현재 원문을 입력하고 카테고리를 선택한 뒤 작품명 근처의 **AI 큐레이터에게 작품 추천받기**를 누릅니다. 작품명을 비워도 추천받을 수 있습니다. 제목 3개 중 하나를 고르거나 직접 수정하고, 별도 설명 영역에서 해설을 읽고 수정하세요. **이 설명을 확인했으며 작품 설명으로 함께 저장합니다**를 선택한 설명만 최종 기증 시 저장합니다. 원문과 설명은 별도 컬럼이며 후보 목록은 DB에 저장하지 않습니다. 확인하지 않으면 기존 텍스트 작품만 기증합니다.
+
+제목 변경만으로 재생성하지 않습니다. **다시 생성하기**를 눌렀을 때만 새 요청을 보냅니다. 원문/카테고리 수정 시 오래된 결과 안내를 표시하고, 원문·제목·카테고리·설명 수정 시 확인 체크를 해제합니다. 실패해도 작품 입력과 편집한 내용은 유지되며 AI 없이 기증할 수 있습니다.
+
+기본 모델은 **`gpt-5.6-terra`**입니다. 공식 문서의 mini급 지능·비용 균형과 구조화 출력 지원을 기준으로 선택했습니다. FastAPI가 `POST https://api.openai.com/v1/responses`를 한 번 호출하며 `reasoning.effort: none`, strict JSON Schema, `max_output_tokens: 1000`, `store: false`를 사용합니다. 서버가 제목 개수/길이/다양성, 한국어 설명 2~4문장을 다시 검사합니다. 문체·새 사실을 만들지 않는 정도는 사용자가 실제 결과로 확인해야 합니다. [모델](https://developers.openai.com/api/docs/models/gpt-5.6-terra), [구조화 출력](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses).
+
+API 키는 사용자가 [OpenAI API 키 설정](https://platform.openai.com/settings/organization/api-keys)에서 적절한 프로젝트의 키를 직접 발급합니다. 프로젝트의 사용량·지출 설정과 필요한 권한을 확인하고 키를 채팅·코드·브라우저·Git에 넣지 마세요. [공식 키 관리 안내](https://developers.openai.com/api/docs/guides/production-best-practices).
+
+`backend/.env.example`에는 변수명과 빈 키만 제공합니다. 이 파일을 복사하는 것만으로는 자동 로드되지 않습니다. **백엔드 터미널에서만**, 아래처럼 숨김 입력으로 프로세스 환경변수를 설정한 후 서버를 실행하세요. 실행 중인 이전 백엔드는 먼저 해당 터미널에서 `Ctrl+C`로 종료합니다. `.env`나 저장소 설정을 덮어쓸 필요는 없습니다.
+
+```powershell
+Set-Location "C:\Users\aicam\Desktop\EXCUSE ME\backend"
+$curatorSecret = Read-Host "OpenAI API key" -AsSecureString
+$curatorPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($curatorSecret)
+try {
+  $env:OPENAI_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($curatorPointer)
+} finally {
+  [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($curatorPointer)
+}
+$env:OPENAI_CURATOR_MODEL = 'gpt-5.6-terra'
+$env:OPENAI_CURATOR_TIMEOUT_SECONDS = '20'
+.\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+`VITE_` 변수는 브라우저에 공개되므로 OpenAI 키를 넣지 않습니다. 키 없이 서버를 실행해도 일반 등록·조회는 정상이며 AI 버튼에는 설정 안내가 표시됩니다. 요청 본문·키·제공사 원본 오류를 로그에 남기지 않습니다. 키가 설정된 상태에서 버튼을 누르면 실제 유료 API 요청이 발생할 수 있습니다.
+
+기본 네트워크 제한 시간은 20초(설정은 5~25초로 제한), 브라우저는 30초입니다. 자동 재시도·리다이렉트 재요청은 없습니다. 단일 프로세스 메모리 기준 10분간 방문객 5회·연결 IP 10회·전체 30회, 동시 2건으로 제한합니다. 동일 방문객/IP의 진행 중 요청과 요청 UUID 재전송은 차단합니다. 실패 시도도 횟수에 포함하며 재시작 시 한도가 초기화됩니다. 여러 worker/서버 사이의 공유 제한이나 정식 인증은 이번 범위가 아닙니다.
+
+브라우저에서 확인할 순서:
+
+1. 키 없이 AI 추천 오류 안내를 확인하고 직접 제목을 입력해 텍스트 기증이 되는지 확인합니다.
+2. 키를 안전하게 설정하고 백엔드를 다시 실행한 뒤 원문·카테고리를 입력하고 추천 버튼을 한 번 누릅니다. 제목 3개와 해설이 함께 나와야 합니다.
+3. 후보 제목을 고른 뒤 직접 고칩니다. 설명이 자동으로 다시 생성되지 않아야 합니다.
+4. 설명을 수정하고 확인 체크 후 기증합니다. 상세 화면의 최종 제목/설명과 원문 펼치기에서 원문 보존을 확인합니다.
+5. 원문을 수정해 오래된 추천 안내·확인 해제를 확인합니다. 다시 생성 중 빠른 클릭을 반복해도 중복 요청이 생기지 않아야 합니다.
+6. 설명 확인을 선택하지 않거나 AI 요청이 실패해도 기존 텍스트 기증이 가능해야 합니다. 사진·AI 이미지 방식의 기증 차단도 유지되어야 합니다.
+
+최초 구현 당시 에이전트 작업 환경에는 키가 없어 실제 OpenAI 생성 API를 호출하지 않았습니다. 이후 사용자가 **실제 API의 제목 3개 추천·미술관 스타일 설명 표시·결과 UI**를 브라우저에서 확인했습니다. 이번 저장 작업에서는 추가 실제 호출을 하지 않고 모의 전송 테스트만 재실행했습니다.
+
+제목/설명 수정·확인 후 기증, 상세 재조회·새로고침/재시작 후 최종 설명 유지·원문 보존은 **코드 점검과 임시 DB 자동 검사 통과, 사용자 브라우저 미검증**입니다. 실제 모델의 다양한 원문에 대한 품질/사실 충실도, 지연·비용·실제 오류, 모바일·전체 브라우저 회귀도 미검증입니다. 다음으로 위 3~6번 저장·재조회 흐름을 직접 확인하면 됩니다. 코드는 연결되어 있으며 프로덕션에 가짜 추천 모드는 없습니다.

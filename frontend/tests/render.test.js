@@ -58,8 +58,35 @@ test('exhibition renders framed image separately from ordered information, prese
     assert.match(prepared, /<img[^>]+src="\/media\/future.png"/)
     assert.match(prepared, /alt="이불의 중력 작품 이미지"/)
     assert.match(prepared, /별도로 다듬은 작품 설명/)
-    assert.doesNotMatch(prepared, /임시 설명|이불의 중력이 너무 강해/)
+    assert.doesNotMatch(prepared, /임시 설명/)
+    assert.match(prepared, /원문 핑계 확인하기/)
+    assert.match(prepared, /이불의 중력이 너무 강해/)
     assert.equal(artwork.content, '이불의 중력이 너무 강해 오늘도 늦었습니다.')
+  } finally {
+    await server.close()
+  }
+})
+
+test('curator preview shows editable suggestions, explicit confirmation, stale warning and a usable manual title field', async () => {
+  const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
+  try {
+    const { CuratorSuggestions, CuratorDescription } = await server.ssrLoadModule('/src/CuratorPanel.jsx')
+    const state = { status: 'success', titles: ['중력의 미학', '기상 유예', '이불 속 전시'], description: '작품의 설명입니다. 원문은 보존됩니다.', confirmed: false, snapshot: { content: '이전의 원문 핑계입니다.', category: '약속' }, error: '' }
+    const curator = { state, generate() {}, dispatch() {} }
+    const values = { title: state.titles[1], content: '새로 고친 원문 핑계입니다.', category: '약속' }
+    const titles = renderToStaticMarkup(React.createElement(CuratorSuggestions, { curator, values, onChooseTitle() {} }))
+    assert.match(titles, /다시 생성하기/)
+    assert.match(titles, /aria-pressed="true"/)
+    assert.match(titles, /이전 AI 추천이 현재 내용과 다를 수 있습니다/)
+    assert.match(titles, /자동으로 다시 생성하지 않습니다/)
+    assert.match(titles, /OpenAI에 보내/)
+    const description = renderToStaticMarkup(React.createElement(CuratorDescription, { curator }))
+    assert.match(description, /<textarea/)
+    assert.match(description, /type="checkbox"/)
+    assert.doesNotMatch(description, /checked=""/)
+    assert.match(description, /이 설명을 확인했으며/)
+    const missingKey = renderToStaticMarkup(React.createElement(CuratorSuggestions, { curator: { ...curator, state: { ...state, status: 'error', titles: [], error: 'AI가 설정되지 않았습니다. 텍스트 기증은 가능합니다.' } }, values, onChooseTitle() {} }))
+    assert.match(missingKey, /텍스트 기증은 가능합니다/)
   } finally {
     await server.close()
   }
