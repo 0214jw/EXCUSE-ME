@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, UUID4, field_validator, model
 
 from database import CATEGORIES, connection, initialize
 from curator import CuratorInput, CuratorResult, generate_curator
+import paintings
 
 
 @asynccontextmanager
@@ -44,6 +45,8 @@ class ArtworkInput(BaseModel):
     request_id: UUID4 = Field(default_factory=uuid4)
     refined_description: str | None = Field(default=None, max_length=1000, strict=True)
     description_confirmed: bool = Field(default=False, strict=True)
+    image_token: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{43}$", strict=True)
+    image_confirmed: bool = Field(default=False, strict=True)
 
     @field_validator("refined_description", mode="before")
     @classmethod
@@ -58,6 +61,8 @@ class ArtworkInput(BaseModel):
     def require_description_confirmation(self):
         if self.refined_description and not self.description_confirmed:
             raise ValueError("작품 설명 확인이 필요합니다.")
+        if self.image_token and not self.image_confirmed:
+            raise ValueError("생성 이미지 확인이 필요합니다.")
         return self
 
     @field_validator("title", "content", "author", mode="before")
@@ -91,7 +96,7 @@ class ArtworkOutput(BaseModel):
     created_at: str
     updated_at: str
     # Only the final, user-confirmed description is accepted during donation.
-    # Image metadata remains read-only until image workflows exist.
+    # Image metadata is derived exclusively from a server-generated capability.
     refined_description: str | None = None
     image_url: str | None = None
     image_mode: Literal["generated", "photo"] | None = None
@@ -110,7 +115,10 @@ async def invalid_input(request, exc):
         "artwork_id": "작품 번호는 1 이상의 정수여야 합니다.",
         "refined_description": "작품 설명은 최대 1000자의 문자열로 입력해 주세요.",
         "description_confirmed": "작품 설명 확인 여부를 선택해 주세요.",
-        "body": "작품 설명을 확인한 뒤 저장 여부를 선택해 주세요.",
+        "image_style": "수채화·유화·점묘화·연필 드로잉·콜라주 중 하나를 선택해 주세요.",
+        "image_token": "생성된 이미지 정보가 올바르지 않습니다.",
+        "image_confirmed": "생성 이미지를 확인한 뒤 기증 여부를 선택해 주세요.",
+        "body": "작품 설명과 생성 이미지의 확인 여부를 확인해 주세요.",
     }
     errors = {}
     for error in exc.errors():
@@ -137,11 +145,25 @@ def curate(data: CuratorInput, request: Request):
     return generate_curator(data, request.client.host if request.client else "unknown")
 
 
+@app.post("/api/image-generations")
+def generate_image(data: paintings.PaintingInput, request: Request, response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    return paintings.generate_painting(data, request.client.host if request.client else "unknown")
+
+
 @app.post("/api/artworks", response_model=ArtworkOutput, status_code=201)
 def create_artwork(artwork: ArtworkInput, response: Response):
     now = datetime.now(timezone.utc).isoformat(timespec="microseconds")
     values = artwork.model_dump(mode="json")
     with connection() as db:
+        db.execute("BEGIN IMMEDIATE")
+        existing = db.execute("SELECT * FROM artworks WHERE visitor_id=? AND request_id=?",
+                              (values["visitor_id"], values["request_id"])).fetchone()
+        image = paintings.donation_image(db, values, existing["id"] if existing else None)
+        if existing:
+            linked = db.execute("SELECT id FROM image_generations WHERE artwork_id=?", (existing["id"],)).fetchone()
+            if bool(linked) != bool(image) or (linked and linked["id"] != image["id"]):
+                raise HTTPException(409, "이미 사용한 기증 요청의 이미지가 다릅니다.")
         cursor = db.execute("""
             INSERT INTO artworks
                 (title, content, category, author, visitor_id, request_id, created_at, updated_at, refined_description)
@@ -156,9 +178,31 @@ def create_artwork(artwork: ArtworkInput, response: Response):
             if any(row[key] != values[key] for key in ("title", "content", "category", "author", "refined_description")):
                 raise HTTPException(409, "이미 사용한 요청 번호입니다. 입력 내용을 확인해 주세요.")
             response.status_code = 200
+        elif image:
+            image_url = f"/api/artworks/{row['id']}/image"
+            db.execute("UPDATE artworks SET image_url=?, image_mode='generated', image_style=? WHERE id=?",
+                       (image_url, image["style"], row["id"]))
+            db.execute("UPDATE image_generations SET artwork_id=? WHERE id=?", (row["id"], image["id"]))
+            row = db.execute("SELECT * FROM artworks WHERE id=?", (row["id"],)).fetchone()
         result = dict(row)
     response.headers["Location"] = f"/api/artworks/{result['id']}"
     return result
+
+
+@app.get("/api/artworks/{artwork_id}/image")
+def get_artwork_image(artwork_id: Annotated[int, Path(ge=1, le=9223372036854775807)]):
+    with connection() as db:
+        row = db.execute("SELECT filename,digest FROM image_generations WHERE artwork_id=? AND status='ready'",
+                         (artwork_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "공개된 작품 이미지가 없습니다.")
+    try:
+        raw = paintings.file_path(row["filename"]).read_bytes()
+        if paintings.hashlib.sha256(raw).hexdigest() != row["digest"]:
+            raise OSError("Changed image")
+    except OSError:
+        raise HTTPException(503, "작품 이미지를 불러올 수 없습니다.") from None
+    return Response(raw, media_type="image/png", headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "public, max-age=3600"})
 
 
 @app.get("/api/artworks", response_model=list[ArtworkOutput])

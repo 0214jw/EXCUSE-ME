@@ -92,11 +92,12 @@ test('curator preview shows editable suggestions, explicit confirmation, stale w
   }
 })
 
-test('creation cards expose local-only photo choices and clearly unavailable AI styling', async () => {
+test('creation cards preserve local-only photos and expose explicit paid painting generation', async () => {
   const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
   try {
     const { default: ArtworkCreation, CreationPreview, StyleChoices } = await server.ssrLoadModule('/src/ArtworkCreation.jsx')
-    const renderMode = (mode) => renderToStaticMarkup(React.createElement(ArtworkCreation, { mode, onModeChange() {} }))
+    const painting = { state: { status: 'idle', result: null, error: '' }, style: 'watercolor', ready: false, setStyle() {}, generate() {}, dispatch() {} }
+    const renderMode = (mode) => renderToStaticMarkup(React.createElement(ArtworkCreation, { mode, painting, onModeChange() {} }))
     const text = renderMode('text')
     assert.match(text, /사진으로 작품 만들기/)
     assert.match(text, /AI로 작품 만들기/)
@@ -111,7 +112,9 @@ test('creation cards expose local-only photo choices and clearly unavailable AI 
     assert.match(photo, /사진 작품 기증과 AI 화풍 변환은 준비 중/)
     const generated = renderMode('generated')
     for (const style of ['수채화', '유화', '점묘화', '연필 드로잉', '콜라주']) assert.ok(generated.includes(style))
-    assert.match(generated, /<button[^>]*disabled=""[^>]*>AI 작품 제작 준비 중/)
+    assert.match(generated, /작품 이미지 생성하기/)
+    assert.match(generated, /별개의 유료 요청/)
+    assert.match(generated, /0.053/)
     assert.match(generated, /이미지가 아직 생성되지 않았습니다/)
     assert.doesNotMatch(generated, /<img /)
     const styles = renderToStaticMarkup(React.createElement(StyleChoices, { name: 'photo_style', value: 'oil', onChange() {} }))
@@ -125,4 +128,23 @@ test('creation cards expose local-only photo choices and clearly unavailable AI 
   } finally {
     await server.close()
   }
+})
+
+test('generated preview, review confirmation, stale state and detail/gallery media URLs render', async () => {
+  const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
+  try {
+    const { GeneratedCreation } = await server.ssrLoadModule('/src/ArtworkCreation.jsx')
+    const { LiveArtworkCard } = await server.ssrLoadModule('/src/ArtworkPages.jsx')
+    const { default: Exhibition } = await server.ssrLoadModule('/src/ArtworkExhibition.jsx')
+    const painting = { state: { status: 'success', result: { image_token: 'a'.repeat(43), preview_data_url: 'data:image/png;base64,iVBORw==' } }, style: 'oil', ready: false, stale: true, setStyle() {}, generate() {}, dispatch() {} }
+    const preview = renderToStaticMarkup(React.createElement(GeneratedCreation, { painting }))
+    assert.match(preview, /alt="기증 전 확인하는 AI 생성 회화"/)
+    assert.match(preview, /비공개 미리보기/)
+    assert.match(preview, /이전 이미지와 일치하지 않습니다/)
+    assert.match(preview, /type="checkbox"[^>]*disabled/)
+    const artwork = { id: 7, title: '회화 작품', content: '원문은 그대로 유지된 텍스트입니다.', author: '작가', category: '약속', created_at: '2026-11-02T00:00:00Z', image_url: '/api/artworks/7/image', image_mode: 'generated', image_style: 'oil' }
+    for (const Component of [LiveArtworkCard, Exhibition]) {
+      assert.match(renderToStaticMarkup(React.createElement(Component, { artwork })), /src="http:\/\/127.0.0.1:8000\/api\/artworks\/7\/image"/)
+    }
+  } finally { await server.close() }
 })

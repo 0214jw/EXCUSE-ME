@@ -8,10 +8,11 @@ export const imageStyles = [
 
 const previewTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
-export function imageDonationBlockReason(mode) {
+export function imageDonationBlockReason(mode, ready = false) {
   if (mode === 'text') return ''
   if (mode === 'photo') return '사진은 브라우저 안에서만 미리보기할 수 있습니다. 사진 작품 기증과 AI 화풍 변환은 준비 중입니다. 지금 기증하려면 이미지 없이 텍스트로 기증을 선택해 주세요.'
-  return 'AI 작품 제작과 이미지 기증은 준비 중입니다. 지금 기증하려면 이미지 없이 텍스트로 기증을 선택해 주세요.'
+  if (mode === 'generated' && ready) return ''
+  return 'AI 이미지를 생성하고 결과 확인란을 선택해야 기증할 수 있습니다. 아직 기증 준비 중입니다. 이미지 없이 텍스트로도 기증할 수 있습니다.'
 }
 
 // Local-only blob URL: never upload the File or include it in an artwork payload.

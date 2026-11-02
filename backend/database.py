@@ -56,3 +56,17 @@ def initialize():
             if name not in existing:
                 # Names/definitions come exclusively from the static map above.
                 db.execute(f"ALTER TABLE artworks ADD COLUMN {name} {definition}")
+        # Private generation ledger: previews are not public artworks. Reservations
+        # survive restarts and failures, so retrying cannot silently reset costs.
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS image_generations (
+                id TEXT PRIMARY KEY, visitor_id TEXT NOT NULL, request_id TEXT NOT NULL,
+                client_hash TEXT NOT NULL, context_hash TEXT NOT NULL,
+                token_hash TEXT NOT NULL UNIQUE, style TEXT NOT NULL,
+                status TEXT NOT NULL CHECK(status IN ('pending', 'ready', 'failed', 'expired')),
+                created_at REAL NOT NULL, expires_at REAL NOT NULL,
+                reserved_cents INTEGER NOT NULL, filename TEXT, digest TEXT,
+                artwork_id INTEGER UNIQUE REFERENCES artworks(id),
+                UNIQUE(visitor_id, request_id)
+            )
+        """)

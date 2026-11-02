@@ -1,3 +1,5 @@
+import { apiBaseUrl } from './artworkApi.js'
+
 // Presentation fallback only: never overwrite the donated original or save this
 // template as an AI result. Later server-generated copy belongs in refined_description.
 export function artworkDescription(artwork) {
@@ -14,6 +16,7 @@ export function artworkImageUrl(artwork) {
   // Accept future served media paths or HTTP(S) URLs; never embed executable URLs.
   if (/[\\\u0000-\u0020]/u.test(value)) return null
   const rootRelative = value.startsWith('/') && !value.startsWith('//')
+  if (/^\/api\/artworks\/[1-9]\d*\/image$/.test(value)) return `${apiBaseUrl}${value}`
   if (!rootRelative && !/^https?:\/\//i.test(value)) return null
   try {
     const url = new URL(value, 'https://excuse-me.invalid')
