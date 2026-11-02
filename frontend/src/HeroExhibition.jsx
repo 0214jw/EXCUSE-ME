@@ -9,7 +9,7 @@ const backgroundStudies = [
   { number: '04', tone: 'olive', quote: '알람과 저의\n진술이 다릅니다.' },
 ]
 
-export default function HeroExhibition({ onUnavailable }) {
+export default function HeroExhibition() {
   const [imageUnavailable, setImageUnavailable] = useState(false)
 
   return (
@@ -68,7 +68,7 @@ export default function HeroExhibition({ onUnavailable }) {
           <p>모든 핑계에는 전시될 자격이 있다.</p>
           <div className="poster-actions">
             <a className="museum-button primary" href="/gallery">전시 관람하기 <span aria-hidden="true">↗</span></a>
-            <button className="museum-button secondary" type="button" onClick={() => onUnavailable('submit')}>작품 기증하기 <span aria-hidden="true">＋</span></button>
+            <a className="museum-button secondary" href="/submit">작품 기증하기 <span aria-hidden="true">＋</span></a>
           </div>
         </div>
       </div>

@@ -43,7 +43,7 @@ function SampleNotice({ detailed = false }) {
 export function HomePage({ onUnavailable }) {
   return (
     <main id="main-content">
-      <HeroExhibition onUnavailable={onUnavailable} />
+      <HeroExhibition />
 
       <section className="museum-intro" aria-label="박물관 소개"><div className="page-width intro-inner"><p className="eyebrow">EVERY EXCUSE TELLS A STORY.</p><p>그럴듯하지 않아도 괜찮습니다.<br /><strong>어쩌면, 그래서 더 예술적이니까요.</strong></p><span className="intro-symbol" aria-hidden="true">✳</span></div></section>
 
@@ -51,24 +51,24 @@ export function HomePage({ onUnavailable }) {
         <div className="section-heading"><div><p className="eyebrow">A FIRST LOOK</p><h2 id="preview-title" className="section-title">오늘의 변명, 내일의 명작.</h2></div><a className="text-link" href="/gallery">상설 전시관 둘러보기 <Arrow /></a></div>
         <SampleNotice />
         <div className="artwork-grid preview-grid">{sampleArtworks.slice(0, 3).map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} onUnavailable={onUnavailable} />)}</div>
-        <div className="donation-note"><span className="eyebrow">YOUR EXCUSE BELONGS HERE.</span><p>당신의 변명에도, 작품 번호가 붙는 날이 옵니다.</p><button className="text-link" type="button" onClick={() => onUnavailable('submit')}>작품 기증 안내 <Arrow /></button></div>
+        <div className="donation-note"><span className="eyebrow">YOUR EXCUSE BELONGS HERE.</span><p>당신의 변명에도, 작품 번호를 붙여드립니다.</p><a className="text-link" href="/submit">작품 기증하기 <Arrow /></a></div>
       </section>
     </main>
   )
 }
 
-export function GalleryPage({ onUnavailable }) {
+export function SampleCollection({ onUnavailable }) {
   const [category, setCategory] = useState('전체')
   const [order, setOrder] = useState('latest')
   const artworks = selectSampleArtworks(category, order)
 
   return (
-    <main id="main-content" className="page-width gallery-page">
-      <section aria-labelledby="gallery-title">
-        <div className="gallery-heading"><div><p className="eyebrow">THE PERMANENT COLLECTION / EXHIBITION 01</p><h1 id="gallery-title">상설 전시관<span className="title-period">.</span></h1><p className="gallery-description">사소한 핑계도, 여기서는 근사한 작품이 됩니다.</p></div><span className="gallery-index" aria-hidden="true">08<span>EXCUSES<br />ON DISPLAY</span></span></div>
+    <details className="sample-collection">
+      <summary>디자인 예시 전시 · 가상 작품 8점 둘러보기</summary>
+      <section aria-label="가상 예시 작품 전시">
         <SampleNotice detailed />
         <div className="gallery-controls">
-          <div className="category-filters" role="group" aria-label="작품 카테고리">{categories.map((item) => <button key={item} type="button" aria-pressed={category === item} className={`category-button ${category === item ? 'is-active' : ''}`} onClick={() => setCategory(item)}>{item}<span aria-hidden="true">{item === '전체' ? sampleArtworks.length : sampleArtworks.filter((artwork) => artwork.category === item).length}</span></button>)}</div>
+          <div className="category-filters" role="group" aria-label="예시 작품 카테고리">{categories.map((item) => <button key={item} type="button" aria-pressed={category === item} className={`category-button ${category === item ? 'is-active' : ''}`} onClick={() => setCategory(item)}>{item}<span aria-hidden="true">{item === '전체' ? sampleArtworks.length : sampleArtworks.filter((artwork) => artwork.category === item).length}</span></button>)}</div>
           <label className="sort-control">정렬<select value={order} onChange={(event) => setOrder(event.target.value)}><option value="latest">최신순 (샘플)</option><option value="popular">인기순 (샘플)</option></select></label>
         </div>
         <div className="gallery-result"><p role="status" aria-live="polite"><strong>{artworks.length}</strong>점의 샘플 작품 <span> / {category}</span></p><p>{order === 'latest' ? '가상 등록일 기준' : '가상 명작 인정 수 기준'} · 상세 감상 준비 중</p></div>
@@ -76,6 +76,6 @@ export function GalleryPage({ onUnavailable }) {
         {artworks.length === 0 && <div className="empty-collection"><p>이 카테고리에는 샘플 작품이 없습니다.</p><button className="text-link" type="button" onClick={() => setCategory('전체')}>전체 작품 보기 →</button></div>}
         <p className="gallery-end">— END OF SAMPLE COLLECTION —</p>
       </section>
-    </main>
+    </details>
   )
 }

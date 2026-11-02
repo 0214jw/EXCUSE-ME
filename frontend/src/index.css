@@ -256,3 +256,147 @@ button, a, select { touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
 }
+
+/* Phase 2: acquisitions and real donated works. Keep the existing museum palette. */
+input, textarea { font: inherit; color: inherit; }
+.donation-page { padding-block: 60px 80px; }
+.donation-heading { margin-bottom: 42px; }
+.donation-heading .eyebrow { color: var(--wine); margin-bottom: 18px; }
+.donation-heading > p:last-child { color: var(--muted); font-size: 14px; line-height: 1.9; margin-top: 20px; }
+.donation-layout { display: grid; grid-template-columns: 1fr 1.7fr; gap: 7%; align-items: start; }
+.donation-guide { padding: 28px 0; border-top: 1px solid var(--ink); }
+.donation-mark { display: block; color: var(--wine); font-size: 64px; line-height: 1; margin-bottom: 28px; }
+.donation-guide .eyebrow { font-size: 8px; color: var(--wine); }
+.donation-guide h2 { font-size: 27px; letter-spacing: -.045em; line-height: 1.5; margin-block: 18px 24px; }
+.donation-guide > p:not(.eyebrow) { font-size: 12px; line-height: 1.9; color: var(--muted); margin-bottom: 20px; }
+.donation-form { padding: 32px; border: 1px solid var(--line); background: #fff; min-width: 0; }
+.form-caption { display: flex; justify-content: space-between; gap: 10px; padding-bottom: 22px; margin-bottom: 26px; border-bottom: 1px solid var(--ink); font-size: 18px; font-weight: 700; }
+.form-caption span { font-size: 10px; font-weight: 400; color: var(--muted); }
+.donation-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.form-field { margin-bottom: 28px; }
+.form-field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.form-field label span { color: var(--wine); }
+.form-field label small { margin-left: 8px; color: var(--muted); font-weight: 400; }
+.form-field input, .form-field textarea, .form-field select { width: 100%; border: 1px solid var(--line); border-radius: 0; padding: 13px; background: #f9fafb; font-size: 14px; line-height: 1.7; }
+.form-field textarea { resize: vertical; min-height: 170px; }
+.form-field [aria-invalid="true"] { border-color: var(--wine); }
+.field-hint { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px; margin-top: 8px; color: var(--muted); font-size: 10px; line-height: 1.7; }
+.field-error { margin-top: 8px; color: var(--wine); font-size: 12px; line-height: 1.7; }
+.visitor-note { padding: 15px; border: 1px solid var(--line); font-size: 11px; line-height: 1.9; color: var(--muted); }
+.form-actions { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 20px; margin-top: 28px; }
+.museum-button:disabled { opacity: .6; cursor: wait; }
+.collection-notice { padding: 36px 24px; border: 1px solid var(--line); margin-block: 28px; line-height: 1.9; font-size: 14px; }
+.collection-notice .text-link { margin: 16px 24px 0 0; }
+.error-notice { color: var(--wine); border: 1px solid var(--wine); padding: 20px; line-height: 1.9; font-size: 13px; }
+.form-error { margin-top: 22px; }
+.sample-collection { margin-block: 35px 45px; padding-top: 24px; border-top: 1px solid var(--line); }
+.sample-collection summary { cursor: pointer; font-size: 13px; color: var(--muted); padding-block: 12px; }
+.sample-collection section { margin-top: 22px; }
+.live-quote { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.artwork-title, .artwork-author, .canvas-signature { overflow-wrap: anywhere; }
+.empty-collection p { margin-bottom: 22px; line-height: 1.9; font-size: 14px; }
+.empty-collection .text-link { margin: 16px; }
+.detail-page { min-height: 65vh; padding-block: 40px 80px; }
+.detail-exhibit { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 8%; align-items: center; margin-top: 45px; }
+.detail-artwork { min-width: 0; margin: 0; }
+.detail-frame { border: 12px solid #5a4634; outline: 1px solid var(--ink); outline-offset: -4px; background: #e7decd; box-shadow: 9px 13px 0 #24201f0b, inset 0 0 0 1px #c3b7a4; min-width: 0; }
+.detail-image-mat { padding: clamp(16px, 3vw, 40px); }
+.detail-image-surface { position: relative; aspect-ratio: 4 / 5; min-width: 0; overflow: hidden; background: #f9fafb; border: 1px solid var(--line); }
+.detail-artwork-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+.detail-image-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 24px; width: 100%; height: 100%; text-align: center; }
+.placeholder-artwork-mark { font-size: clamp(48px, 7vw, 80px); color: var(--wine); line-height: 1; }
+.detail-image-placeholder .eyebrow { font-size: 8px; color: var(--muted); letter-spacing: .13em; }
+.detail-image-placeholder > p { font-size: 15px; line-height: 1.8; word-break: keep-all; }
+.placeholder-artwork-note { font-size: 11px; line-height: 1.9; color: var(--muted); word-break: keep-all; }
+.detail-artwork figcaption { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 22px; padding-inline: 3px; font-size: 9px; color: var(--muted); letter-spacing: .08em; }
+.detail-label { min-width: 0; }
+.detail-label .eyebrow { color: var(--wine); }
+.detail-label h1 { font-size: clamp(28px, 3vw, 38px); font-weight: 700; line-height: 1.5; letter-spacing: -.05em; margin-block: 0 12px; overflow-wrap: anywhere; }
+.detail-author { color: var(--muted); font-size: 14px; margin-bottom: 32px; overflow-wrap: anywhere; }
+.detail-description { border-top: 1px solid var(--ink); padding-top: 26px; margin-bottom: 30px; }
+.detail-description h2 { font-size: 12px; font-weight: 700; color: var(--wine); margin-bottom: 14px; }
+.detail-description-text { font-size: 15px; line-height: 2; white-space: pre-wrap; overflow-wrap: anywhere; }
+.detail-description-note { font-size: 10px; color: var(--muted); line-height: 1.8; margin-top: 16px; }
+.detail-label dl { border-top: 1px solid var(--line); padding-top: 22px; margin-bottom: 30px; }
+.detail-label dl > div { display: grid; grid-template-columns: 68px 1fr; gap: 14px; margin-bottom: 15px; font-size: 12px; line-height: 1.7; }
+.detail-label dt { color: var(--muted); }
+@media (max-width: 800px) {
+  .donation-layout { grid-template-columns: 1fr; gap: 26px; }
+  .donation-guide { padding-block: 20px; }
+  .donation-mark, .donation-guide h2 { display: none; }
+  .detail-exhibit { grid-template-columns: 1fr; gap: 40px; }
+  .detail-artwork { max-width: 560px; width: 100%; margin-inline: auto; }
+}
+@media (max-width: 600px) {
+  .donation-page { padding-block: 36px 45px; }
+  .donation-form { padding: 20px 16px; }
+  .form-actions { align-items: stretch; }
+  .form-actions .museum-button { width: 100%; }
+  .gallery-heading { flex-wrap: wrap; }
+  .detail-frame { border-width: 8px; }
+  .detail-image-placeholder { padding: 18px; gap: 16px; }
+  .detail-label h1 { font-size: 28px; }
+}
+
+/* Local photo preview and future artwork creation choices. */
+.artwork-creation { border-top: 1px solid var(--line); padding-block: 26px 8px; margin-top: 8px; }
+.creation-heading { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.creation-heading h2 { font-size: 16px; font-weight: 700; letter-spacing: -.025em; }
+.creation-badge { display: inline-block; border: 1px solid var(--line); padding: 4px 7px; color: var(--muted); font-size: 9px; font-weight: 400; line-height: 1.5; }
+.creation-help { color: var(--muted); font-size: 11px; line-height: 1.9; margin-block: 10px 16px; }
+.creation-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.creation-method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.creation-method-card { position: relative; display: flex; flex-direction: column; align-items: start; gap: 12px; padding: 18px; border: 1px solid var(--line); background: #f9fafb; cursor: pointer; min-width: 0; }
+.creation-method-card input, .style-choice input, .photo-treatment input { accent-color: var(--wine); width: 16px; height: 16px; margin: 0; flex-shrink: 0; }
+.creation-method-card:has(input:checked), .style-choice:has(input:checked), .photo-treatment label:has(input:checked) { border-color: var(--wine); background: #fcf5f5; box-shadow: inset 0 0 0 1px var(--wine); }
+.creation-method-card:has(input:checked)::after { content: '선택됨'; position: absolute; right: 14px; top: 18px; font-size: 10px; color: var(--wine); font-weight: 700; }
+.creation-method-card:focus-within, .style-choice:focus-within { outline: 2px solid var(--wine); outline-offset: 3px; }
+.creation-card-index { font-size: 8px; letter-spacing: .1em; color: var(--muted); margin-top: 4px; }
+.creation-method-card strong { font-size: 16px; letter-spacing: -.04em; line-height: 1.6; }
+.creation-method-card > span:not(.creation-card-index) { font-size: 11px; line-height: 1.8; }
+.creation-method-card small { font-size: 10px; color: var(--muted); line-height: 1.8; }
+.creation-options { padding: 22px 18px; margin-top: 18px; border: 1px solid var(--line); }
+.creation-option-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px; font-weight: 700; margin-bottom: 20px; }
+.photo-file-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
+.photo-file-input { display: block; max-width: 100%; width: 100%; font-size: 11px; color: var(--muted); }
+.photo-file-input::file-selector-button { padding: 10px 14px; background: #f9fafb; border: 1px solid var(--ink); color: var(--ink); cursor: pointer; margin-right: 10px; }
+.selected-photo { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 11px; margin-block: 12px; }
+.selected-photo > span { overflow-wrap: anywhere; min-width: 0; }
+.selected-photo .text-link { font-size: 10px; }
+.donation-form .photo-treatment, .donation-form .style-choices { margin-top: 22px; }
+.photo-treatment legend, .style-choices legend { font-size: 12px; font-weight: 700; margin-bottom: 12px; }
+.photo-treatment label { display: flex; align-items: start; gap: 12px; border: 1px solid var(--line); padding: 14px; margin-top: 8px; cursor: pointer; font-size: 12px; line-height: 1.6; }
+.photo-treatment label small { display: block; margin-top: 5px; font-size: 10px; color: var(--muted); }
+.style-choice-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
+.style-choice { position: relative; display: flex; flex-direction: column; align-items: start; gap: 10px; border: 1px solid var(--line); padding: 12px 8px; min-width: 0; cursor: pointer; }
+.style-choice-mark { align-self: center; display: grid; place-items: center; height: 44px; font-size: 30px; color: var(--wine); }
+.style-oil .style-choice-mark { color: #64664d; }
+.style-pencil .style-choice-mark { color: var(--ink); }
+.style-choice-name { font-size: 11px; font-weight: 600; line-height: 1.7; }
+.style-choice small { font-size: 6px; letter-spacing: .05em; color: var(--muted); overflow-wrap: anywhere; }
+.creation-preview { margin: 22px 0 0; }
+.creation-preview-frame { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border: 6px solid #b9a88e; outline: 1px solid #9d8b72; outline-offset: -1px; background: #f9fafb; }
+.creation-preview-frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.creation-preview-empty { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px; padding: 18px; text-align: center; }
+.creation-preview-empty > span { color: var(--wine); font-size: 46px; line-height: 1; }
+.creation-preview-empty p { font-size: 13px; line-height: 1.8; }
+.creation-preview-empty small { font-size: 10px; color: var(--muted); line-height: 1.7; }
+.creation-preview figcaption { font-size: 10px; color: var(--muted); line-height: 1.8; margin-top: 12px; }
+.creation-unavailable { margin-top: 18px; color: var(--wine); font-size: 11px; line-height: 1.9; }
+.creation-generate-button { width: 100%; margin-top: 18px; }
+.text-donation-choice { margin-block: 18px; padding-block: 12px; }
+.text-donation-choice [aria-pressed="true"] { color: var(--wine); border-color: var(--wine); }
+.text-donation-choice p { margin-top: 12px; font-size: 11px; line-height: 1.9; color: var(--muted); }
+.donation-form:not([aria-busy="true"]) .museum-button:disabled { cursor: not-allowed; }
+@media (max-width: 1100px) {
+  .style-choice-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .creation-method-grid { grid-template-columns: 1fr; }
+  .creation-method-card { padding: 16px; }
+  .creation-options { padding: 18px 12px; }
+  .style-choice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .creation-preview-empty { gap: 10px; padding: 12px; }
+  .creation-preview-empty > span { font-size: 34px; }
+  .creation-preview-empty p { font-size: 12px; }
+}

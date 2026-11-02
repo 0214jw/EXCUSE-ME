@@ -1,6 +1,7 @@
 // Design samples only. Authors, dates and recognition counts are fictional.
 // This is not a DB schema or the future artwork API contract.
-export const categories = ['전체', '지각', '과제', '약속', '운동', '기타']
+import { artworkCategories } from './artworkRules.js'
+export const categories = ['전체', ...artworkCategories]
 
 export const sampleArtworks = [
   {
@@ -8,7 +9,7 @@ export const sampleArtworks = [
     title: '중력의 사적인 사정',
     content: '오늘따라 침대 주변의 중력이 유난히 강했습니다. 일어나려는 의지는 있었으나, 물리 법칙을 거스를 수는 없었습니다.',
     author: '뉴턴의 후손',
-    category: '지각',
+    category: '지각·조퇴',
     createdAt: '2026-10-30T09:00:00+09:00',
     sampleRecognitions: 128,
     tone: 'wine',
@@ -16,14 +17,14 @@ export const sampleArtworks = [
   },
   {
     id: 7,
-    title: '파일은 완성되었습니다',
-    content: '과제는 완성했습니다. 다만 파일이 제출이라는 현실을 받아들이지 못하고 제 컴퓨터에 남기로 했습니다.',
-    author: '저장만 열두 번',
-    category: '과제',
+    title: '회복에도 예술이 필요합니다',
+    content: '몸이 오늘을 휴식의 날로 지정했습니다. 건강한 내일을 위해 이불 속에서 조용히 회복에 전념하기로 했습니다.',
+    author: '휴식의 큐레이터',
+    category: '휴가·병가',
     createdAt: '2026-10-29T18:00:00+09:00',
     sampleRecognitions: 96,
     tone: 'paper',
-    quote: '완성은 했습니다.\n제출과는 별개로.',
+    quote: '오늘은 회복을\n전시하는 날입니다.',
   },
   {
     id: 6,
@@ -63,7 +64,7 @@ export const sampleArtworks = [
     title: '알람의 묵비권',
     content: '알람은 울렸다고 하고 저는 못 들었다고 합니다. 양측의 주장이 엇갈려 추가 수면 조사가 필요했습니다.',
     author: '다섯 분의 철학자',
-    category: '지각',
+    category: '지각·조퇴',
     createdAt: '2026-10-25T08:00:00+09:00',
     sampleRecognitions: 87,
     tone: 'ink',
@@ -71,10 +72,10 @@ export const sampleArtworks = [
   },
   {
     id: 2,
-    title: '생각의 숙성 기간',
-    content: '아이디어를 더 깊게 숙성시키고 있습니다. 마감일은 지났지만 훌륭한 생각에는 발효의 시간이 필요합니다.',
-    author: '마감의 미학',
-    category: '과제',
+    title: '쉼표의 숙성 기간',
+    content: '휴가를 통해 에너지를 더 깊게 숙성시키고 있습니다. 훌륭한 내일에는 충분한 쉼표와 발효의 시간이 필요합니다.',
+    author: '쉼표의 미학',
+    category: '휴가·병가',
     createdAt: '2026-10-24T20:00:00+09:00',
     sampleRecognitions: 142,
     tone: 'wine',

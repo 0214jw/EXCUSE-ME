@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import HealthCheck from './HealthCheck.jsx'
-import { GalleryPage, HomePage } from './MuseumPages.jsx'
+import { HomePage } from './MuseumPages.jsx'
+import { ArtworkDetailPage, GalleryPage, SubmitPage } from './ArtworkPages.jsx'
+import { getVisitorId } from './visitor.js'
 
 const notices = {
-  submit: { title: '작품 기증은 준비 중입니다.', message: '아직 작품을 등록할 수 없습니다. 지금은 디자인 확인용 샘플 전시를 둘러보세요.' },
-  detail: { title: '작품 감상실은 준비 중입니다.', message: '현재 카드는 디자인 확인용 샘플입니다. 작품의 실제 상세 조회와 명작 인정 기능은 다음 개발 단계에서 만나요.' },
-  hall: { title: '명예의 전당은 준비 중입니다.', message: '실제 투표와 순위는 아직 제공하지 않습니다. 전시관의 인기순은 가상 인정 수로 정렬하는 샘플입니다.' },
+  detail: { title: '디자인 확인용 예시 작품입니다.', message: '이 작품과 작가명·명작 인정 수는 가상이며 DB에 저장된 작품이 아닙니다. 실제 기증 작품은 상설 전시관 위쪽에서 감상할 수 있습니다.' },
+  hall: { title: '명예의 전당은 준비 중입니다.', message: '실제 투표와 순위는 아직 제공하지 않습니다. 예시 작품의 인기순은 가상 인정 수로 정렬하는 샘플입니다.' },
 }
 
 function Brand() {
@@ -17,7 +18,10 @@ export default function App() {
   // These public pages do not require an additional routing library.
   const path = window.location.pathname.replace(/\/+$/, '') || '/'
   const dialogRef = useRef(null)
-  const [notice, setNotice] = useState(notices.submit)
+  const [notice, setNotice] = useState(notices.detail)
+  useEffect(() => {
+    try { getVisitorId() } catch { /* Registration presents storage errors without blocking browsing. */ }
+  }, [])
 
   function onUnavailable(kind) {
     setNotice(notices[kind])
@@ -28,8 +32,10 @@ export default function App() {
   if (path === '/') page = <HomePage onUnavailable={onUnavailable} />
   else if (path === '/gallery') page = <GalleryPage onUnavailable={onUnavailable} />
   else if (path === '/health') page = <HealthCheck />
+  else if (path === '/submit') page = <SubmitPage />
+  else if (/^\/artworks\/[^/]+$/.test(path)) page = <ArtworkDetailPage id={path.split('/')[2]} />
   else {
-    const futurePage = path === '/submit' ? notices.submit : path === '/hall-of-fame' ? notices.hall : /^\/artworks\/[^/]+$/.test(path) ? notices.detail : null
+    const futurePage = path === '/hall-of-fame' ? notices.hall : null
     page = (
       <main id="main-content" className="page-width placeholder-page">
         <p className="eyebrow">EXCUSE ME! / INFORMATION</p>
@@ -51,13 +57,13 @@ export default function App() {
             <a href="/gallery" aria-current={path === '/gallery' ? 'page' : undefined}>상설 전시관</a>
             <button type="button" onClick={() => onUnavailable('hall')}>명예의 전당<span className="coming-soon">준비 중</span></button>
           </nav>
-          <button className="header-donate" type="button" onClick={() => onUnavailable('submit')}>작품 기증하기 <span aria-hidden="true">↗</span></button>
+          <a className="header-donate" href="/submit" aria-current={path === '/submit' ? 'page' : undefined}>작품 기증하기 <span aria-hidden="true">↗</span></a>
         </div>
       </header>
       {page}
       <footer className="site-footer">
         <div className="page-width footer-top"><Brand /><p>모든 변명에는, 나름의 사정이 있다.</p><a className="health-link" href="/health" aria-current={path === '/health' ? 'page' : undefined}>서버 연결 확인 ↗</a></div>
-        <div className="page-width footer-bottom"><span>EXCUSE ME! · ABSURD ART MUSEUM</span><span>디자인 확인용 데모 · 실제 작품 저장 없음</span></div>
+        <div className="page-width footer-bottom"><span>EXCUSE ME! · ABSURD ART MUSEUM</span><span>회원가입 없는 데모 · 기증한 텍스트 작품은 저장·공개됩니다.</span></div>
       </footer>
       <dialog ref={dialogRef} className="museum-dialog" aria-labelledby="notice-title" aria-describedby="notice-message">
         <p className="eyebrow">COMING SOON</p>
