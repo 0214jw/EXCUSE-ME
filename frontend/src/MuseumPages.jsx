@@ -1,22 +1,23 @@
 import { useState } from 'react'
 import { categories, sampleArtworks, sampleNumber, selectSampleArtworks } from './sampleArtworks.js'
 import HeroExhibition from './HeroExhibition.jsx'
+import ArtworkVisual from './ArtworkVisual.jsx'
 
 function Arrow() {
   return <span aria-hidden="true">↗</span>
 }
 
-function ArtworkCard({ artwork, onUnavailable }) {
+function ArtworkCard({ artwork, onUnavailable, exhibition = false }) {
   return (
     <article className="artwork-card" aria-labelledby={`artwork-${artwork.id}`}>
       <button type="button" className="artwork-open" aria-label={`${artwork.title} — 작품 상세 준비 중 안내`} onClick={() => onUnavailable('detail')}>
-        <span className={`artwork-frame tone-${artwork.tone}`}>
+        {exhibition ? <ArtworkVisual artwork={{ ...artwork, content: artwork.quote }} tone={artwork.tone} /> : <span className={`artwork-frame tone-${artwork.tone}`}>
           <span className="frame-canvas">
             <span className="canvas-edition">EXCUSE ME! / TEXT COLLECTION</span>
             <span className="canvas-quote">{artwork.quote}</span>
             <span className="canvas-signature">{artwork.author}</span>
           </span>
-        </span>
+        </span>}
         <span className="artwork-label">
           <span className="artwork-label-top"><span>SAMPLE № {sampleNumber(artwork.id)}</span><span>{artwork.category}</span></span>
           <span id={`artwork-${artwork.id}`} role="heading" aria-level="3" className="artwork-title">{artwork.title}<Arrow /></span>
@@ -72,7 +73,7 @@ export function SampleCollection({ onUnavailable }) {
           <label className="sort-control">정렬<select value={order} onChange={(event) => setOrder(event.target.value)}><option value="latest">최신순 (샘플)</option><option value="popular">인기순 (샘플)</option></select></label>
         </div>
         <div className="gallery-result"><p role="status" aria-live="polite"><strong>{artworks.length}</strong>점의 샘플 작품 <span> / {category}</span></p><p>{order === 'latest' ? '가상 등록일 기준' : '가상 명작 인정 수 기준'} · 상세 감상 준비 중</p></div>
-        <div className="artwork-grid">{artworks.map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} onUnavailable={onUnavailable} />)}</div>
+        <div className="artwork-grid">{artworks.map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} onUnavailable={onUnavailable} exhibition />)}</div>
         {artworks.length === 0 && <div className="empty-collection"><p>이 카테고리에는 샘플 작품이 없습니다.</p><button className="text-link" type="button" onClick={() => setCategory('전체')}>전체 작품 보기 →</button></div>}
         <p className="gallery-end">— END OF SAMPLE COLLECTION —</p>
       </section>

@@ -1,21 +1,5 @@
-import { useState } from 'react'
 import { artworkDescription, artworkImageUrl } from './artworkPresentation.js'
-
-function FramedImage({ imageUrl, title }) {
-  const [failed, setFailed] = useState(false)
-  if (!imageUrl || failed) {
-    const message = failed ? '작품 이미지를 불러오지 못했습니다.' : '작품 이미지는 준비 중입니다.'
-    return (
-      <div className="detail-image-placeholder" role="img" aria-label={message}>
-        <span className="placeholder-artwork-mark" aria-hidden="true">✳</span>
-        <span className="eyebrow" aria-hidden="true">A SPACE FOR YOUR STORY</span>
-        <p aria-hidden="true">{message}</p>
-        <span className="placeholder-artwork-note" aria-hidden="true">{failed ? '작품 설명은 계속 감상할 수 있습니다.' : '그림이 놓일 자리에서, 먼저 이야기를 감상해 주세요.'}</span>
-      </div>
-    )
-  }
-  return <img className="detail-artwork-image" src={imageUrl} alt={`${title} 작품 이미지`} decoding="async" onError={() => setFailed(true)} />
-}
+import ArtworkVisual from './ArtworkVisual.jsx'
 
 // Data-driven exhibition view: no generation or upload request runs during viewing.
 export default function ArtworkExhibition({ artwork }) {
@@ -28,10 +12,8 @@ export default function ArtworkExhibition({ artwork }) {
   return (
     <article className="detail-exhibit" aria-labelledby="artwork-title">
       <figure className="detail-artwork">
-        <div className="detail-frame"><div className="detail-image-mat"><div className="detail-image-surface">
-          <FramedImage key={imageUrl || 'pending'} imageUrl={imageUrl} title={artwork.title} />
-        </div></div></div>
-        <figcaption><span>COLLECTION № {String(artwork.id).padStart(3, '0')}</span><span>{imageUrl ? '작품 이미지' : '이미지 준비 중'}</span></figcaption>
+        <ArtworkVisual artwork={artwork} size="large" />
+        <figcaption><span>COLLECTION № {String(artwork.id).padStart(3, '0')}</span><span>{imageUrl ? '작품 이미지 · 원본 비율' : '텍스트 작품 · 원문 전체는 작품 정보에서'}</span></figcaption>
       </figure>
       <div className="detail-label">
         <h1 id="artwork-title">{artwork.title}</h1>

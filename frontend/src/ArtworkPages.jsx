@@ -12,7 +12,7 @@ import { CuratorDescription, CuratorSuggestions } from './CuratorPanel.jsx'
 import { curatorDonationFields } from './curatorState.js'
 import usePainting from './usePainting.js'
 import { paintingDonationFields } from './paintingState.js'
-import { artworkImageUrl } from './artworkPresentation.js'
+import ArtworkVisual from './ArtworkVisual.jsx'
 
 const filters = ['전체', ...artworkCategories]
 const formatDate = (date) => new Intl.DateTimeFormat('ko-KR', {
@@ -32,16 +32,10 @@ function ResourceNotice({ resource }) {
 }
 
 export function LiveArtworkCard({ artwork }) {
-  const imageUrl = artworkImageUrl(artwork)
-  const [failed, setFailed] = useState(false)
   return (
     <article className="artwork-card" aria-labelledby={`collection-${artwork.id}`}>
       <a className="artwork-open" href={`/artworks/${artwork.id}`} aria-label={`${artwork.title} 감상하기`}>
-        <span className="artwork-frame tone-wine"><span className="frame-canvas">
-          {imageUrl && !failed ? <img className="gallery-painting" src={imageUrl} alt={`${artwork.title} AI 회화`} loading="lazy" onError={() => setFailed(true)} /> : <><span className="canvas-edition">EXCUSE ME! / DONATED COLLECTION</span>
-          <span className="canvas-quote live-quote">{artwork.content}</span>
-          <span className="canvas-signature">{artwork.author}</span></>}
-        </span></span>
+        <ArtworkVisual artwork={artwork} />
         <span className="artwork-label">
           <span className="artwork-label-top"><span>작품 № {String(artwork.id).padStart(3, '0')}</span><span>{artwork.category}</span></span>
           <span id={`collection-${artwork.id}`} role="heading" aria-level="2" className="artwork-title">{artwork.title}<span aria-hidden="true">↗</span></span>

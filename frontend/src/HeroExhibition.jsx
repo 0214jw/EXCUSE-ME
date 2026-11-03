@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import sculptureImage from './assets/the-birth-of-an-excuse-cutout.png'
+import antiqueFrame from './assets/museum-antique-gold-frame.png'
 import './HeroExhibition.css'
 
 const backgroundStudies = [
@@ -23,8 +24,9 @@ export default function HeroExhibition() {
         <div className="poster-gallery" aria-hidden="true">
           {backgroundStudies.map((study) => (
             <div className={'poster-frame poster-frame-' + study.number + ' poster-frame-' + study.tone} key={study.number}>
-              <span className="poster-frame-mat">
+              <span className="poster-frame-stage">
                 <span className="poster-frame-canvas"><span>{study.quote}</span><small>EXCUSE STUDY / {study.number}</small></span>
+                <img className="poster-frame-overlay" src={antiqueFrame} width="1024" height="1536" alt="" decoding="async" />
               </span>
             </div>
           ))}

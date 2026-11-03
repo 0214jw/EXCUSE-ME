@@ -299,15 +299,6 @@ input, textarea { font: inherit; color: inherit; }
 .detail-page { min-height: 65vh; padding-block: 40px 80px; }
 .detail-exhibit { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 8%; align-items: center; margin-top: 45px; }
 .detail-artwork { min-width: 0; margin: 0; }
-.detail-frame { border: 12px solid #5a4634; outline: 1px solid var(--ink); outline-offset: -4px; background: #e7decd; box-shadow: 9px 13px 0 #24201f0b, inset 0 0 0 1px #c3b7a4; min-width: 0; }
-.detail-image-mat { padding: clamp(16px, 3vw, 40px); }
-.detail-image-surface { position: relative; aspect-ratio: 4 / 5; min-width: 0; overflow: hidden; background: #f9fafb; border: 1px solid var(--line); }
-.detail-artwork-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
-.detail-image-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 24px; width: 100%; height: 100%; text-align: center; }
-.placeholder-artwork-mark { font-size: clamp(48px, 7vw, 80px); color: var(--wine); line-height: 1; }
-.detail-image-placeholder .eyebrow { font-size: 8px; color: var(--muted); letter-spacing: .13em; }
-.detail-image-placeholder > p { font-size: 15px; line-height: 1.8; word-break: keep-all; }
-.placeholder-artwork-note { font-size: 11px; line-height: 1.9; color: var(--muted); word-break: keep-all; }
 .detail-artwork figcaption { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 22px; padding-inline: 3px; font-size: 9px; color: var(--muted); letter-spacing: .08em; }
 .detail-label { min-width: 0; }
 .detail-label .eyebrow { color: var(--wine); }
@@ -333,8 +324,6 @@ input, textarea { font: inherit; color: inherit; }
   .form-actions { align-items: stretch; }
   .form-actions .museum-button { width: 100%; }
   .gallery-heading { flex-wrap: wrap; }
-  .detail-frame { border-width: 8px; }
-  .detail-image-placeholder { padding: 18px; gap: 16px; }
   .detail-label h1 { font-size: 28px; }
 }
 
@@ -421,7 +410,6 @@ input, textarea { font: inherit; color: inherit; }
 .curator-confirm input { accent-color: var(--wine); flex-shrink: 0; width: 16px; height: 16px; margin-top: 3px; }
 .detail-original { border-top: 1px solid var(--line); padding-block: 18px; margin-bottom: 12px; }
 .detail-original summary { font-size: 12px; color: var(--muted); cursor: pointer; }
-.gallery-painting { display: block; width: 100%; height: 180px; object-fit: contain; }
 .painting-confirm { display: flex; align-items: start; gap: 10px; margin-top: 18px; font-size: 12px; line-height: 1.9; }
 .painting-confirm input { accent-color: var(--wine); flex-shrink: 0; width: 16px; height: 16px; margin-top: 3px; }
 .detail-original p { font-size: 13px; line-height: 1.9; margin-top: 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
