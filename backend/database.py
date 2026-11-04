@@ -81,3 +81,15 @@ def initialize():
                 PRIMARY KEY (artwork_id, visitor_id)
             )
         """)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS photo_uploads (
+                id TEXT PRIMARY KEY, visitor_id TEXT NOT NULL, request_id TEXT NOT NULL,
+                token_hash TEXT NOT NULL UNIQUE, filename TEXT NOT NULL UNIQUE,
+                digest TEXT NOT NULL, media_type TEXT NOT NULL, size INTEGER NOT NULL,
+                created_at REAL NOT NULL, expires_at REAL NOT NULL,
+                status TEXT NOT NULL CHECK(status IN ('ready','linked','retired')),
+                artwork_id INTEGER UNIQUE REFERENCES artworks(id) ON DELETE SET NULL,
+                UNIQUE(visitor_id, request_id)
+            )
+        """)
+        db.execute("CREATE TABLE IF NOT EXISTS photo_cleanup (filename TEXT PRIMARY KEY)")

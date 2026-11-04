@@ -171,24 +171,26 @@ test('curator preview shows editable suggestions, explicit confirmation, stale w
   }
 })
 
-test('creation cards preserve local-only photos and expose explicit paid painting generation', async () => {
+test('creation cards support original photos separately from existing painting generation', async () => {
   const server = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom' })
   try {
     const { default: ArtworkCreation, CreationPreview, StyleChoices } = await server.ssrLoadModule('/src/ArtworkCreation.jsx')
     const painting = { state: { status: 'idle', result: null, error: '' }, style: 'watercolor', ready: false, setStyle() {}, generate() {}, dispatch() {} }
-    const renderMode = (mode) => renderToStaticMarkup(React.createElement(ArtworkCreation, { mode, painting, onModeChange() {} }))
+    const photoState = { file: null, url: null, error: '', ready: false, select() {}, clear() {} }
+    const renderMode = (mode) => renderToStaticMarkup(React.createElement(ArtworkCreation, { mode, painting, photo: photoState, onModeChange() {} }))
     const text = renderMode('text')
-    assert.match(text, /사진으로 작품 만들기/)
+    assert.match(text, /사진 작품/)
+    assert.match(text, /텍스트 작품/)
     assert.match(text, /AI로 작품 만들기/)
     assert.match(text, /텍스트 작품 기증이 선택되어 있습니다/)
     assert.match(text, /aria-pressed="true"/)
     const photo = renderMode('photo')
     assert.match(photo, /type="file"/)
-    assert.match(photo, /accept="image\/jpeg,image\/png,image\/webp,image\/gif"/)
+    assert.match(photo, /accept="\.jpg,\.jpeg,\.png,\.webp,image\/jpeg,image\/png,image\/webp"/)
     assert.match(photo, /원본 사진 전시/)
-    assert.match(photo, /AI 화풍 변환/)
-    assert.match(photo, /업로드·기증되지 않음/)
-    assert.match(photo, /사진 작품 기증과 AI 화풍 변환은 준비 중/)
+    assert.match(photo, /사진은 AI에 전송하지 않습니다/)
+    assert.match(photo, /최대 5MB/)
+    assert.doesNotMatch(photo, /name="photo_treatment"|name="photo_style"|GIF/)
     const generated = renderMode('generated')
     for (const style of ['수채화', '유화', '점묘화', '연필 드로잉', '콜라주']) assert.ok(generated.includes(style))
     assert.match(generated, /작품 이미지 생성하기/)

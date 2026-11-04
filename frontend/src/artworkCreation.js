@@ -6,20 +6,28 @@ export const imageStyles = [
   { value: 'collage', label: '콜라주', english: 'COLLAGE', mark: '◈' },
 ]
 
-const previewTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+export const maxPhotoBytes = 5 * 1024 * 1024
+const previewTypes = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' }
 
-export function imageDonationBlockReason(mode, ready = false) {
+export function validatePhotoFile(file) {
+  const extension = file?.name?.toLowerCase().match(/\.[^.]+$/)?.[0]
+  if (!previewTypes[extension] || (file.type && file.type !== previewTypes[extension])) throw new Error('JPG, JPEG, PNG, WEBP 사진만 선택해 주세요.')
+  if (/[\\/:\u0000-\u001f]/.test(file.name)) throw new Error('폴더 경로가 없는 사진 파일을 선택해 주세요.')
+  if (file.size === 0) throw new Error('비어 있는 파일입니다. 다른 사진을 선택해 주세요.')
+  if (file.size > maxPhotoBytes) throw new Error('사진은 5MB 이하로 선택해 주세요.')
+  return previewTypes[extension]
+}
+
+export function imageDonationBlockReason(mode, ready = false, photoReady = false) {
   if (mode === 'text') return ''
-  if (mode === 'photo') return '사진은 브라우저 안에서만 미리보기할 수 있습니다. 사진 작품 기증과 AI 화풍 변환은 준비 중입니다. 지금 기증하려면 이미지 없이 텍스트로 기증을 선택해 주세요.'
+  if (mode === 'photo') return photoReady ? '' : '기증할 사진을 선택하고 미리보기가 표시되는지 확인해 주세요.'
   if (mode === 'generated' && ready) return ''
   return 'AI 이미지를 생성하고 결과 확인란을 선택해야 기증할 수 있습니다. 아직 기증 준비 중입니다. 이미지 없이 텍스트로도 기증할 수 있습니다.'
 }
 
-// Local-only blob URL: never upload the File or include it in an artwork payload.
-// The owner must dispose on replacement, removal, mode change or unmount.
+// Local preview only. Actual upload is a separate, explicit donation step.
 export function createPhotoPreview(file) {
-  if (!previewTypes.has(file?.type)) throw new Error('JPG, PNG, WebP, GIF 사진을 선택해 주세요.')
-  if (file.size === 0) throw new Error('비어 있는 파일입니다. 다른 사진을 선택해 주세요.')
+  validatePhotoFile(file)
   const url = URL.createObjectURL(file)
   let disposed = false
   return {

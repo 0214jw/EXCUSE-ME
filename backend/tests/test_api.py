@@ -49,7 +49,7 @@ class ArtworkApiTests(unittest.TestCase):
                 with urlopen(cls.base + "/api/health", timeout=1) as response:
                     if response.status == 200:
                         return
-            except (URLError, TimeoutError):
+            except (URLError, TimeoutError, ConnectionError):
                 time.sleep(0.05)
         cls.stop_server()
         raise RuntimeError("Test API server did not become ready")

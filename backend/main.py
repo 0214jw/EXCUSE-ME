@@ -10,27 +10,31 @@ from fastapi import FastAPI, Header, HTTPException, Path, Query, Request, Respon
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, UUID4, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, UUID4, computed_field, field_validator, model_validator
 
 from database import CATEGORIES, connection, initialize
 from curator import CuratorInput, CuratorResult, generate_curator
 import paintings
+import photos
 
 
 @asynccontextmanager
 async def lifespan(app):
     initialize()
+    photos.cleanup_pending()
     yield
 
 
 app = FastAPI(title="EXCUSE ME! API", lifespan=lifespan)
+app.include_router(photos.router)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Content-Type", "X-Visitor-ID"],
+    allow_headers=["Content-Type", "X-Visitor-ID", "X-Upload-ID", "X-Upload-Token", "X-File-Name"],
+    expose_headers=["X-Photo-Cleanup"],
 )
 
 
@@ -81,6 +85,7 @@ class ArtworkInput(ArtworkFields):
     description_confirmed: bool = Field(default=False, strict=True)
     image_token: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{43}$", strict=True)
     image_confirmed: bool = Field(default=False, strict=True)
+    photo_token: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{43}$", strict=True)
 
     @model_validator(mode="after")
     def require_description_confirmation(self):
@@ -88,11 +93,14 @@ class ArtworkInput(ArtworkFields):
             raise ValueError("작품 설명 확인이 필요합니다.")
         if self.image_token and not self.image_confirmed:
             raise ValueError("생성 이미지 확인이 필요합니다.")
+        if self.image_token and self.photo_token:
+            raise ValueError("사진과 AI 이미지를 동시에 기증할 수 없습니다.")
         return self
 
 
 class ArtworkUpdate(ArtworkFields):
     visitor_id: UUID4
+    photo_token: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{43}$", strict=True)
 
 
 class ArtworkDelete(BaseModel):
@@ -130,6 +138,11 @@ class ArtworkOutput(BaseModel):
     recognition_count: int = Field(default=0, ge=0)
     recognized_by_me: bool = False
 
+    @computed_field
+    @property
+    def artwork_type(self) -> Literal["text", "photo", "generated"]:
+        return self.image_mode or "text"
+
 
 # Counts come from actual rows, never from a mutable cached counter.
 ARTWORK_SELECT = """SELECT a.*,
@@ -159,7 +172,8 @@ async def invalid_input(request, exc):
         "image_style": "수채화·유화·점묘화·연필 드로잉·콜라주 중 하나를 선택해 주세요.",
         "image_token": "생성된 이미지 정보가 올바르지 않습니다.",
         "image_confirmed": "생성 이미지를 확인한 뒤 기증 여부를 선택해 주세요.",
-        "body": "작품 설명과 생성 이미지의 확인 여부를 확인해 주세요.",
+        "photo_token": "업로드한 사진 정보를 확인해 주세요.",
+        "body": "작품 설명 확인 여부와 사진·AI 이미지의 중복 선택을 확인해 주세요.",
     }
     errors = {}
     for error in exc.errors():
@@ -201,10 +215,14 @@ def create_artwork(artwork: ArtworkInput, response: Response):
         existing = db.execute("SELECT * FROM artworks WHERE visitor_id=? AND request_id=?",
                               (values["visitor_id"], values["request_id"])).fetchone()
         image = paintings.donation_image(db, values, existing["id"] if existing else None)
+        photo = photos.donation_photo(db, values, existing["id"] if existing else None)
         if existing:
             linked = db.execute("SELECT id FROM image_generations WHERE artwork_id=?", (existing["id"],)).fetchone()
             if bool(linked) != bool(image) or (linked and linked["id"] != image["id"]):
                 raise HTTPException(409, "이미 사용한 기증 요청의 이미지가 다릅니다.")
+            linked_photo = db.execute('SELECT id FROM photo_uploads WHERE artwork_id=?', (existing['id'],)).fetchone()
+            if bool(linked_photo) != bool(photo) or (linked_photo and linked_photo['id'] != photo['id']):
+                raise HTTPException(409, "이미 사용한 기증 요청의 사진이 다릅니다.")
         cursor = db.execute("""
             INSERT INTO artworks
                 (title, content, category, author, visitor_id, request_id, created_at, updated_at, refined_description)
@@ -225,6 +243,8 @@ def create_artwork(artwork: ArtworkInput, response: Response):
                        (image_url, image["style"], row["id"]))
             db.execute("UPDATE image_generations SET artwork_id=? WHERE id=?", (row["id"], image["id"]))
             row = db.execute("SELECT * FROM artworks WHERE id=?", (row["id"],)).fetchone()
+        elif photo:
+            photos.link_photo(db, photo, row['id'])
         result = dict(artwork_row(db, row["id"]))
     response.headers["Location"] = f"/api/artworks/{result['id']}"
     return result
@@ -233,8 +253,15 @@ def create_artwork(artwork: ArtworkInput, response: Response):
 @app.get("/api/artworks/{artwork_id}/image")
 def get_artwork_image(artwork_id: Annotated[int, Path(ge=1, le=9223372036854775807)]):
     with connection() as db:
+        photo = db.execute("""SELECT p.* FROM photo_uploads p JOIN artworks a ON a.id=p.artwork_id
+            WHERE a.id=? AND a.image_mode='photo' AND p.status='linked'""", (artwork_id,)).fetchone()
         row = db.execute("SELECT filename,digest FROM image_generations WHERE artwork_id=? AND status='ready'",
                          (artwork_id,)).fetchone()
+    if photo:
+        return Response(photos.read_photo(photo), media_type=photo['media_type'], headers={
+            'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store',
+            'Content-Disposition': 'inline; filename="artwork.' + photo['filename'].rsplit('.', 1)[1] + '"',
+        })
     if not row:
         raise HTTPException(404, "공개된 작품 이미지가 없습니다.")
     try:
@@ -323,13 +350,20 @@ def update_artwork(artwork_id: Annotated[int, Path(ge=1, le=9223372036854775807)
     with connection() as db:
         db.execute("BEGIN IMMEDIATE")
         row = owned_artwork(db, artwork_id, data.visitor_id)
+        if data.photo_token and row['image_mode'] != 'photo':
+            raise HTTPException(422, '사진 작품에서만 사진을 교체할 수 있습니다.')
+        photo = photos.donation_photo(db, data.model_dump(mode='json'), artwork_id)
         # An omitted explanation preserves it; explicit null/blank clears it.
         description = data.refined_description if "refined_description" in data.model_fields_set else row["refined_description"]
         db.execute("""UPDATE artworks SET title=?, content=?, category=?, author=?,
                    refined_description=?, updated_at=? WHERE id=?""",
                    (data.title, data.content, data.category, data.author, description,
                     datetime.now(timezone.utc).isoformat(timespec="microseconds"), artwork_id))
+        if photo:
+            photos.link_photo(db, photo, artwork_id)
         result = dict(artwork_row(db, artwork_id, str(data.visitor_id)))
+    if photo and photos.cleanup_pending():
+        response.headers['X-Photo-Cleanup'] = 'pending'
     response.headers["Cache-Control"] = "no-store"
     return {**result, "can_manage": True}
 
@@ -339,12 +373,14 @@ def delete_artwork(artwork_id: Annotated[int, Path(ge=1, le=9223372036854775807)
     with connection() as db:
         db.execute("BEGIN IMMEDIATE")
         owned_artwork(db, artwork_id, data.visitor_id)
+        photos.retire_photo(db, artwork_id)
         # Revoke public access/capability in the same transaction. Keep budget
         # reservations and private files; only explicit preview maintenance may
         # later remove these unlinked, expired results. Never unlink a client URL.
         db.execute("UPDATE image_generations SET artwork_id=NULL, status='expired' WHERE artwork_id=?", (artwork_id,))
         db.execute("DELETE FROM artworks WHERE id=?", (artwork_id,))
-    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+    pending = photos.cleanup_pending()
+    return Response(status_code=204, headers={"Cache-Control": "no-store", "X-Photo-Cleanup": "pending" if pending else "complete"})
 
 
 def set_recognition(artwork_id, visitor_id, recognized):

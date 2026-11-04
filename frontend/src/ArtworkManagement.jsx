@@ -2,6 +2,9 @@ import { useRef, useState } from 'react'
 import { artworkRequest } from './artworkApi.js'
 import { artworkCategories, characterCount, trimText } from './artworkRules.js'
 import { artworkEditPayload, artworkEditValues, canManageArtwork, deleteArtworkAfterConfirmation, validateArtworkEdit } from './artworkManagement.js'
+import PhotoSelection, { usePhotoSelection } from './PhotoSelection.jsx'
+import { createPhotoUploadSession } from './photoApi.js'
+import { artworkImageUrl } from './artworkPresentation.js'
 
 export function ArtworkOwnerActions({ artwork, visitorId }) {
   const [deleting, setDeleting] = useState(false)
@@ -38,7 +41,12 @@ export function ArtworkEditForm({ artwork, visitorId }) {
   const [saving, setSaving] = useState(false)
   const busy = useRef(false)
   const errorRef = useRef(null)
-  const hasDescription = artwork.refined_description != null
+  const isPhoto = artwork.image_mode === 'photo'
+  const hasDescription = artwork.refined_description != null || isPhoto
+  const photo = usePhotoSelection()
+  const photoUpload = useRef(createPhotoUploadSession())
+  const photoAbort = useRef(null)
+  const [photoUploading, setPhotoUploading] = useState(false)
 
   function update(event) {
     const { name, value } = event.target
@@ -49,6 +57,10 @@ export function ArtworkEditForm({ artwork, visitorId }) {
   async function save(event) {
     event.preventDefault()
     if (busy.current) return
+    if (isPhoto && (photo.error || (photo.file && !photo.ready))) {
+      setMessage(photo.error || '새 사진의 미리보기가 표시되는지 확인해 주세요.')
+      return
+    }
     const validation = validateArtworkEdit(values)
     setErrors(validation)
     setMessage('')
@@ -60,18 +72,30 @@ export function ArtworkEditForm({ artwork, visitorId }) {
     setSaving(true)
     try {
       if (!canManageArtwork(artwork, visitorId)) throw new Error('방문객 정보가 변경되었습니다. 입력을 복사해 보관하고 작품을 다시 열어 주세요.')
-      await artworkRequest(`/api/artworks/${artwork.id}`, artworkEditPayload(values, visitorId, hasDescription), { method: 'PUT' })
+      const payload = artworkEditPayload(values, visitorId, hasDescription)
+      if (isPhoto && photo.file) {
+        const controller = new AbortController()
+        photoAbort.current = controller
+        setPhotoUploading(true)
+        payload.photo_token = await photoUpload.current.tokenFor(photo.file, visitorId, { signal: controller.signal })
+        if (controller.signal.aborted) throw new Error('사진 업로드를 취소했습니다. 기존 이미지와 입력은 유지됩니다.')
+        setPhotoUploading(false)
+        photoAbort.current = null
+      }
+      if (!canManageArtwork(artwork, visitorId)) throw new Error('방문객 정보가 변경되어 저장하지 않았습니다. 입력 내용을 보관하고 작품을 다시 열어 주세요.')
+      const result = await artworkRequest(`/api/artworks/${artwork.id}`, payload, { method: 'PUT' })
+      if (result.photo_cleanup_pending) window.alert('수정은 저장되었습니다. 이전 사진 파일 정리는 재시도 예정입니다.')
       window.location.assign(`/artworks/${artwork.id}`)
     } catch (failure) {
       setErrors(failure.fields || {})
       setMessage(failure.message)
       requestAnimationFrame(() => errorRef.current?.focus())
-    } finally { busy.current = false; setSaving(false) }
+    } finally { photoAbort.current = null; setPhotoUploading(false); busy.current = false; setSaving(false) }
   }
 
   const fields = [
     { name: 'title', label: '작품명', min: 2, max: 50 },
-    { name: 'content', label: '핑계 내용', min: 10, max: 300, multiline: true },
+    { name: 'content', label: isPhoto ? '작품 설명 / 핑계 내용' : '핑계 내용', min: 10, max: 300, multiline: true },
     { name: 'author', label: '작가명', max: 20 },
     ...(hasDescription ? [{ name: 'refined_description', label: '저장된 작품 설명', max: 1000, multiline: true }] : []),
   ]
@@ -79,6 +103,7 @@ export function ArtworkEditForm({ artwork, visitorId }) {
     <form className="donation-form" noValidate onSubmit={save} aria-busy={saving}>
       <p className="form-caption">작품 수정서</p>
       <fieldset disabled={saving}>
+        {isPhoto && <PhotoSelection id="edit-photo" photo={photo} existingUrl={artworkImageUrl(artwork)} />}
         {fields.map(({ name, label, min, max, multiline }) => {
           const props = { id: `edit-${name}`, name, value: values[name], onChange: update, required: Boolean(min),
             'aria-invalid': Boolean(errors[name]), 'aria-describedby': `edit-${name}-hint${errors[name] ? ` edit-${name}-error` : ''}` }
@@ -97,7 +122,8 @@ export function ArtworkEditForm({ artwork, visitorId }) {
           {errors.category && <p className="field-error" id="edit-category-error">{errors.category}</p>}
         </div>
       </fieldset>
-      <p className="visitor-note">기존 작품 이미지·화풍·기증 날짜는 유지됩니다. 이미지나 AI 설명을 자동으로 다시 생성하지 않습니다.</p>
+      {photoUploading && <button className="text-link" type="button" onClick={() => photoAbort.current?.abort()}>사진 업로드 취소</button>}
+      <p className="visitor-note">{isPhoto ? '새 사진을 선택하지 않으면 기존 사진이 유지됩니다. 사진 교체는 저장 후 적용됩니다.' : '기존 작품 이미지·화풍·기증 날짜는 유지됩니다.'} 이미지나 AI 설명을 자동으로 다시 생성하지 않습니다.</p>
       {message && <div className="error-notice form-error" role="alert" tabIndex="-1" ref={errorRef}><p>{message}</p><a className="text-link" href={`/artworks/${artwork.id}`}>실제 저장 결과 확인하기 ↗</a></div>}
       <div className="form-actions"><a className="text-link" href={`/artworks/${artwork.id}`}>수정 취소</a><button className="museum-button primary" type="submit" disabled={saving}>{saving ? '수정 내용을 저장하는 중…' : '수정 내용 저장하기'}</button></div>
     </form>

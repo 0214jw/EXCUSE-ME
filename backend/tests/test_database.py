@@ -70,6 +70,17 @@ class ExhibitionMigrationTests(unittest.TestCase):
             self.assertEqual(row["image_url"], "/media/future-artwork.png")
             self.assertEqual(len(db.execute("PRAGMA table_info(artworks)").fetchall()), 13)
 
+    def test_photo_tables_are_additive_and_repeated_startup_preserves_legacy_work(self):
+        database.initialize()
+        with database.connection() as db:
+            before = tuple(db.execute('SELECT * FROM artworks WHERE id=42').fetchone())
+            self.assertEqual(db.execute('SELECT count(*) FROM photo_uploads').fetchone()[0], 0)
+            self.assertEqual(db.execute('SELECT count(*) FROM photo_cleanup').fetchone()[0], 0)
+        database.initialize()
+        with database.connection() as db:
+            self.assertEqual(tuple(db.execute('SELECT * FROM artworks WHERE id=42').fetchone()), before)
+            self.assertEqual(len(db.execute('PRAGMA table_info(artworks)').fetchall()), 13)
+
     def test_failed_migration_rolls_back_all_added_columns(self):
         with patch.object(database, "EXHIBITION_COLUMNS", {"refined_description": "TEXT", "broken": "INVALID ("}):
             with self.assertRaises(sqlite3.Error):

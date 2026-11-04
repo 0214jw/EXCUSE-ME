@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { createPhotoPreview, imageDonationBlockReason, imageStyles } from './artworkCreation.js'
+import { useState } from 'react'
+import { imageDonationBlockReason, imageStyles } from './artworkCreation.js'
+import PhotoSelection from './PhotoSelection.jsx'
 
 export function StyleChoices({ name, value, onChange, generated = false }) {
   return (
@@ -33,69 +34,6 @@ export function CreationPreview({ src, fileName, error, onImageError, generated 
   )
 }
 
-function PhotoCreation() {
-  const [file, setFile] = useState(null)
-  const [preview, setPreview] = useState(null)
-  const [fileError, setFileError] = useState('')
-  const [failedUrl, setFailedUrl] = useState(null)
-  const [variant, setVariant] = useState('original')
-  const [style, setStyle] = useState('watercolor')
-  const inputRef = useRef(null)
-
-  useEffect(() => {
-    if (!file) return
-    try {
-      const local = createPhotoPreview(file)
-      setPreview(local)
-      return () => local.dispose()
-    } catch (error) {
-      setPreview(null)
-      setFileError(error.message)
-    }
-  }, [file])
-
-  const activePreview = preview?.file === file ? preview : null
-  const decodeFailed = Boolean(activePreview && failedUrl === activePreview.url)
-
-  function chooseFile(event) {
-    const selected = event.target.files?.[0]
-    if (!selected) return
-    setFile(selected)
-    setFileError('')
-    setFailedUrl(null)
-    // Allow choosing the same file again after a decode error.
-    event.target.value = ''
-  }
-
-  function removeFile() {
-    setFile(null)
-    setPreview(null)
-    setFileError('')
-    setFailedUrl(null)
-    if (inputRef.current) inputRef.current.value = ''
-  }
-
-  return (
-    <div className="creation-options" id="photo-creation-options">
-      <p className="creation-option-heading">사진에서 시작하는 작품 <span className="creation-badge">미리보기만 가능</span></p>
-      <label className="photo-file-label" htmlFor="local-photo">사진 파일 선택</label>
-      <input className="photo-file-input" id="local-photo" ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={chooseFile} aria-describedby="photo-file-help photo-error" />
-      <p id="photo-file-help" className="creation-help">JPG, PNG, WebP, GIF · 사진은 브라우저 안에서만 표시됩니다. 제작 방식을 바꾸거나 화면을 떠나면 선택이 해제됩니다.</p>
-      {file && <div className="selected-photo"><span>{file.name}</span><button type="button" className="text-link" onClick={removeFile}>사진 선택 해제</button></div>}
-      <p id="photo-error" className="field-error" role={fileError || decodeFailed ? 'alert' : undefined}>{fileError || (decodeFailed ? '사진을 읽을 수 없습니다. 다른 사진을 선택해 주세요.' : '')}</p>
-      <fieldset className="photo-treatment">
-        <legend>사진 전시 방식</legend>
-        <label><input type="radio" name="photo_treatment" value="original" checked={variant === 'original'} onChange={() => setVariant('original')} /><span>원본 사진 전시<small>선택한 원본 미리보기 · 기증 준비 중</small></span></label>
-        <label><input type="radio" name="photo_treatment" value="styled" checked={variant === 'styled'} onChange={() => setVariant('styled')} /><span>AI 화풍 변환<small>화풍 선택만 가능 · 변환 준비 중</small></span></label>
-      </fieldset>
-      {variant === 'styled' && <StyleChoices name="photo_style" value={style} onChange={setStyle} />}
-      <CreationPreview src={activePreview?.url} fileName={file?.name} error={fileError || decodeFailed} onImageError={() => setFailedUrl(activePreview.url)} />
-      {variant === 'styled' && <p className="creation-help">위 사진은 원본입니다. 선택한 화풍으로 변환된 결과가 아닙니다.</p>}
-      <p className="creation-unavailable">사진 업로드·원본 사진 기증·AI 화풍 변환은 준비 중입니다. 사진을 선택해도 이미지 작품이 저장되지 않습니다.</p>
-    </div>
-  )
-}
-
 export function GeneratedCreation({ painting, curatorBusy = false }) {
   const { state } = painting
   const loading = state.status === 'loading'
@@ -126,27 +64,31 @@ export function GeneratedCreation({ painting, curatorBusy = false }) {
   )
 }
 
-export default function ArtworkCreation({ mode, onModeChange, painting, curatorBusy }) {
+export default function ArtworkCreation({ mode, onModeChange, painting, curatorBusy, photo }) {
   return (
     <section className="artwork-creation" aria-labelledby="creation-title">
-      <div className="creation-heading"><h2 id="creation-title">작품 제작 방식</h2><span className="creation-badge">TEXT / AI PAINTING</span></div>
-      <p className="creation-help">텍스트 그대로 기증하거나, 한 장의 AI 회화로 전시해 보세요. 사진 기증은 준비 중입니다.</p>
+      <div className="creation-heading"><h2 id="creation-title">작품 유형</h2><span className="creation-badge">TEXT / PHOTOGRAPH</span></div>
+      <p className="creation-help">텍스트 작품 또는 원본 사진 작품을 기증해 주세요. 기존 AI 회화 메뉴는 별도 기능이며 사진을 변환하지 않습니다.</p>
       <fieldset className="creation-methods">
         <legend className="creation-sr-only">이미지 제작 방식 선택</legend>
         <div className="creation-method-grid">
           <label className="creation-method-card">
+            <input type="radio" name="creation_mode" value="text" checked={mode === 'text'} onChange={() => onModeChange('text')} />
+            <span className="creation-card-index" aria-hidden="true">01 / TEXT</span><strong>텍스트 작품</strong><span>이미지 없이 글 그대로 전시</span><small>기존 텍스트 기증 방식</small>
+          </label>
+          <label className="creation-method-card">
             <input type="radio" name="creation_mode" value="photo" checked={mode === 'photo'} onChange={() => onModeChange('photo')} aria-controls={mode === 'photo' ? 'photo-creation-options' : undefined} />
-            <span className="creation-card-index" aria-hidden="true">01 / PHOTOGRAPH</span><strong>사진으로 작품 만들기</strong><span>원본 사진 전시 또는 AI 화풍 변환</span><small>사진은 내 브라우저에서만 미리보기</small>
+            <span className="creation-card-index" aria-hidden="true">02 / PHOTOGRAPH</span><strong>사진 작품</strong><span>원본 사진 전시</span><small>사진 선택 → 확인 → 원본 기증</small>
           </label>
           <label className="creation-method-card">
             <input type="radio" name="creation_mode" value="generated" checked={mode === 'generated'} onChange={() => onModeChange('generated')} aria-controls={mode === 'generated' ? 'generated-creation-options' : undefined} />
-            <span className="creation-card-index" aria-hidden="true">02 / IMAGINATION</span><strong>AI로 작품 만들기</strong><span>작성한 핑계에서 출발하는 새로운 그림</span><small>화풍 선택 → 이미지 생성 → 확인 후 기증</small>
+            <span className="creation-card-index" aria-hidden="true">03 / IMAGINATION</span><strong>AI로 작품 만들기</strong><span>작성한 핑계에서 출발하는 새로운 그림</span><small>기존 별도 기능 · 사진 변환 아님</small>
           </label>
         </div>
       </fieldset>
-      {mode === 'photo' && <PhotoCreation />}
+      {mode === 'photo' && photo && <PhotoSelection photo={photo} />}
       {mode === 'generated' && painting && <GeneratedCreation painting={painting} curatorBusy={curatorBusy} />}
-      <div className="text-donation-choice"><button type="button" className="text-link" aria-pressed={mode === 'text'} onClick={() => onModeChange('text')}>이미지 없이 텍스트로 기증{mode === 'text' ? ' ✓' : ' →'}</button><p role="status" aria-live="polite">{imageDonationBlockReason(mode, painting?.ready) || (mode === 'text' ? '텍스트 작품 기증이 선택되어 있습니다. 아래 버튼으로 작품을 저장할 수 있습니다.' : '확인한 AI 회화를 함께 기증합니다.')}</p></div>
+      <div className="text-donation-choice"><button type="button" className="text-link" aria-pressed={mode === 'text'} onClick={() => onModeChange('text')}>이미지 없이 텍스트로 기증{mode === 'text' ? ' ✓' : ' →'}</button><p role="status" aria-live="polite">{imageDonationBlockReason(mode, painting?.ready, photo?.ready) || (mode === 'text' ? '텍스트 작품 기증이 선택되어 있습니다. 아래 버튼으로 작품을 저장할 수 있습니다.' : mode === 'photo' ? '확인한 원본 사진을 함께 기증합니다.' : '확인한 AI 회화를 함께 기증합니다.')}</p></div>
     </section>
   )
 }

@@ -21,12 +21,13 @@ export async function artworkRequest(path, payload, options = {}) {
       ...(payload !== undefined ? { body: JSON.stringify(payload) } : {}),
     })
     const data = response.status === 204 ? null : await response.json()
+    const cleanupPending = response.headers?.get?.('X-Photo-Cleanup') === 'pending'
     if (!response.ok) {
       throw new ApiError(typeof data.detail === 'string' ? data.detail : '요청을 처리할 수 없습니다.', response.status, data.errors || {})
     }
     if (method === 'DELETE') {
       if (response.status !== 204) throw new Error('Unexpected deletion response')
-      return null
+      return cleanupPending ? { photo_cleanup_pending: true } : null
     }
     // Only the random endpoint uses a successful null for an empty exhibition.
     if (!saving && path.split('?')[0] === '/api/artworks/random' && data === null) return null
@@ -35,13 +36,14 @@ export async function artworkRequest(path, payload, options = {}) {
       ['refined_description', 'image_url', 'image_style'].every((key) => item[key] == null || typeof item[key] === 'string') &&
       (item.image_mode == null || ['generated', 'photo'].includes(item.image_mode)) &&
       (item.can_manage == null || typeof item.can_manage === 'boolean') &&
+      (item.artwork_type == null || ['text', 'photo', 'generated'].includes(item.artwork_type)) &&
       (item.recognition_count == null || (Number.isSafeInteger(item.recognition_count) && item.recognition_count >= 0)) &&
       (item.recognized_by_me == null || typeof item.recognized_by_me === 'boolean')
     const expectingList = !saving && ['/api/artworks', '/api/hall-of-fame'].includes(path.split('?')[0])
     if (expectingList ? !Array.isArray(data) || !data.every(validArtwork) : !validArtwork(data)) {
       throw new Error('Unexpected response')
     }
-    return data
+    return cleanupPending ? { ...data, photo_cleanup_pending: true } : data
   } catch (error) {
     if (error instanceof ApiError && error.status < 500) throw error
     const message = method === 'PUT'

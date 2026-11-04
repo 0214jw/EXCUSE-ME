@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { artworkCategories, characterCount, normalizeArtwork, selectArtworks, trimText, validateArtwork } from './artworkRules.js'
 import { artworkRequest } from './artworkApi.js'
-import { createRequestId, getVisitorId } from './visitor.js'
+import { createRequestId, getVisitorId, readVisitorId } from './visitor.js'
 import useArtworkResource from './useArtworkResource.js'
 import { SampleCollection } from './MuseumPages.jsx'
 import ArtworkExhibition from './ArtworkExhibition.jsx'
@@ -15,6 +15,8 @@ import { paintingDonationFields } from './paintingState.js'
 import ArtworkVisual from './ArtworkVisual.jsx'
 import { ArtworkOwnerActions } from './ArtworkManagement.jsx'
 import ArtworkRecognition from './ArtworkRecognition.jsx'
+import { usePhotoSelection } from './PhotoSelection.jsx'
+import { createPhotoUploadSession } from './photoApi.js'
 
 const filters = ['전체', ...artworkCategories]
 const formatDate = (date) => new Intl.DateTimeFormat('ko-KR', {
@@ -92,6 +94,10 @@ export function SubmitPage() {
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [creationMode, setCreationMode] = useState('text')
+  const photo = usePhotoSelection()
+  const photoUpload = useRef(createPhotoUploadSession())
+  const photoAbort = useRef(null)
+  const [photoUploading, setPhotoUploading] = useState(false)
   const busy = useRef(false)
   const pending = useRef(null)
   const errorRef = useRef(null)
@@ -111,7 +117,7 @@ export function SubmitPage() {
     if (painting.state.status === 'loading') return
     // Preview creation alone is not a donation. Require explicit image review,
     // including Enter/programmatic submissions, before linking an image.
-    const blocked = imageDonationBlockReason(creationMode, painting.ready)
+    const blocked = imageDonationBlockReason(creationMode, painting.ready, photo.ready)
     if (blocked) {
       setMessage(blocked)
       requestAnimationFrame(() => errorRef.current?.focus())
@@ -129,6 +135,16 @@ export function SubmitPage() {
     try {
       const payload = { ...normalizeArtwork(values), ...curatorDonationFields(curator.state),
         ...paintingDonationFields(creationMode, painting.state, painting.input), visitor_id: getVisitorId() }
+      if (creationMode === 'photo') {
+        const controller = new AbortController()
+        photoAbort.current = controller
+        setPhotoUploading(true)
+        payload.photo_token = await photoUpload.current.tokenFor(photo.file, payload.visitor_id, { signal: controller.signal })
+        if (controller.signal.aborted) throw new Error('사진 업로드를 취소했습니다. 입력과 사진 선택은 유지됩니다.')
+        setPhotoUploading(false)
+        photoAbort.current = null
+        if (readVisitorId() !== payload.visitor_id.toLowerCase()) throw new Error('방문객 정보가 변경되었습니다. 사진과 입력을 유지한 채 페이지의 저장 결과를 확인해 주세요.')
+      }
       if (creationMode === 'generated' && !payload.image_token) throw new Error('이미지를 다시 확인해 주세요. 기증 가능 시간이 만료되었을 수 있습니다.')
       const fingerprint = JSON.stringify(payload)
       if (pending.current?.fingerprint !== fingerprint) pending.current = { fingerprint, id: createRequestId() }
@@ -139,6 +155,8 @@ export function SubmitPage() {
       setMessage(error.message)
       requestAnimationFrame(() => errorRef.current?.focus())
     } finally {
+      setPhotoUploading(false)
+      photoAbort.current = null
       busy.current = false
       setSaving(false)
     }
@@ -159,16 +177,17 @@ export function SubmitPage() {
               setErrors((current) => ({ ...current, title: undefined }))
               curator.dispatch({ type: 'input_changed' })
             }} />
-            <div className="form-field"><label htmlFor="content">핑계 내용 <span>*</span></label><textarea id="content" name="content" rows="6" value={values.content} onChange={update} required aria-invalid={Boolean(errors.content)} aria-describedby={description('content')} placeholder="그날의 사정, 나름의 이유를 들려주세요." /><p id="content-hint" className="field-hint">10~300자 · 앞뒤 공백 제외 <span>{characterCount(trimText(values.content))} / 300</span></p>{errors.content && <p id="content-error" className="field-error">{errors.content}</p>}</div>
+            <div className="form-field"><label htmlFor="content">{creationMode === 'photo' ? '작품 설명 / 핑계 내용' : '핑계 내용'} <span>*</span></label><textarea id="content" name="content" rows="6" value={values.content} onChange={update} required aria-invalid={Boolean(errors.content)} aria-describedby={description('content')} placeholder="그날의 사정, 나름의 이유를 들려주세요." /><p id="content-hint" className="field-hint">10~300자 · 앞뒤 공백 제외 <span>{characterCount(trimText(values.content))} / 300</span></p>{errors.content && <p id="content-error" className="field-error">{errors.content}</p>}</div>
             <div className="form-field"><label htmlFor="category">카테고리 <span>*</span></label><select id="category" name="category" value={values.category} onChange={update} required aria-invalid={Boolean(errors.category)} aria-describedby={description('category')}><option value="">작품의 카테고리를 선택해 주세요</option>{artworkCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select><p id="category-hint" className="field-hint">다섯 가지 중 한 가지를 골라 주세요.</p>{errors.category && <p id="category-error" className="field-error">{errors.category}</p>}</div>
             <div className="form-field"><label htmlFor="author">작가명 <small>선택</small></label><input id="author" name="author" value={values.author} onChange={update} aria-invalid={Boolean(errors.author)} aria-describedby={description('author')} placeholder="익명의 예술가" /><p id="author-hint" className="field-hint">비워두면 익명의 예술가 <span>{characterCount(trimText(values.author))} / 20</span></p>{errors.author && <p id="author-error" className="field-error">{errors.author}</p>}</div>
             <CuratorDescription curator={curator} />
-            <ArtworkCreation painting={painting} curatorBusy={curator.state.status === 'loading'} mode={creationMode} onModeChange={(mode) => { setCreationMode(mode); painting.dispatch({ type: 'invalidate' }); setMessage('') }} />
+            <ArtworkCreation photo={photo} painting={painting} curatorBusy={curator.state.status === 'loading'} mode={creationMode} onModeChange={(mode) => { setCreationMode(mode); photo.clear(); painting.dispatch({ type: 'invalidate' }); setMessage('') }} />
           </fieldset>
+          {photoUploading && <button className="text-link" type="button" onClick={() => photoAbort.current?.abort()}>사진 업로드 취소</button>}
           <p className="visitor-note">회원가입 없이 참여하는 데모입니다. 브라우저에 임시 방문객 ID를 보관하며 실제 인증 수단은 아닙니다. 저장 정보를 지우면 이전 ID를 잃을 수 있습니다.</p>
           {message && <div className="error-notice form-error" role="alert" tabIndex="-1" ref={errorRef}><p>{message}</p><a className="text-link" href="/gallery">전시관에서 확인하기 ↗</a></div>}
-          <div className="form-actions"><a className="text-link" href="/gallery">전시관으로 돌아가기</a><button className="museum-button primary" type="submit" disabled={saving || curator.state.status === 'loading' || painting.state.status === 'loading' || Boolean(imageDonationBlockReason(creationMode, painting.ready))}>{saving ? '작품을 기증하는 중…' : painting.state.status === 'loading' ? '회화 제작을 기다리는 중…' : curator.state.status === 'loading' ? 'AI 추천 응답을 기다리는 중…' : creationMode === 'generated' ? 'AI 회화 작품 기증하기 ＋' : creationMode === 'photo' ? '사진 기증 준비 중' : '텍스트 작품 기증하기 ＋'}</button></div>
-          <p className="field-hint" role="status" aria-live="polite">{saving ? '기증 결과를 기다리고 있습니다. 잠시만 기다려 주세요.' : imageDonationBlockReason(creationMode, painting.ready) || '기증이 완료되면 작품 감상실로 안내합니다.'}</p>
+          <div className="form-actions"><a className="text-link" href="/gallery">전시관으로 돌아가기</a><button className="museum-button primary" type="submit" disabled={saving || curator.state.status === 'loading' || painting.state.status === 'loading' || Boolean(imageDonationBlockReason(creationMode, painting.ready, photo.ready))}>{saving ? '작품을 기증하는 중…' : painting.state.status === 'loading' ? '회화 제작을 기다리는 중…' : curator.state.status === 'loading' ? 'AI 추천 응답을 기다리는 중…' : creationMode === 'generated' ? 'AI 회화 작품 기증하기 ＋' : creationMode === 'photo' ? '사진 작품 기증하기 ＋' : '텍스트 작품 기증하기 ＋'}</button></div>
+          <p className="field-hint" role="status" aria-live="polite">{saving ? '기증 결과를 기다리고 있습니다. 잠시만 기다려 주세요.' : imageDonationBlockReason(creationMode, painting.ready, photo.ready) || '기증이 완료되면 작품 감상실로 안내합니다.'}</p>
         </form>
       </div>
     </main>

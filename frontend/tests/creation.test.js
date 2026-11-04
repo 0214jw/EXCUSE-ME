@@ -3,9 +3,11 @@ import assert from 'node:assert/strict'
 import { createPhotoPreview, imageDonationBlockReason, imageStyles } from '../src/artworkCreation.js'
 import { normalizeArtwork } from '../src/artworkRules.js'
 
-test('only text donation is eligible; UI file/style choices cannot enter the text payload', () => {
+test('photo requires a decoded preview while file and style choices stay out of text JSON', () => {
   assert.equal(imageDonationBlockReason('text'), '')
-  for (const mode of ['photo', 'generated', '', undefined, 'unknown']) {
+  assert.match(imageDonationBlockReason('photo'), /미리보기/)
+  assert.equal(imageDonationBlockReason('photo', false, true), '')
+  for (const mode of ['generated', '', undefined, 'unknown']) {
     assert.match(imageDonationBlockReason(mode), /준비 중/)
   }
   assert.deepEqual(imageStyles.map(({ value, label }) => [value, label]), [
@@ -38,7 +40,7 @@ test('local photo preview URLs expose the selected bytes and release on disposal
 
 test('invalid or empty photo files cannot create a preview URL', () => {
   for (const file of [null, new File(['text'], 'text.txt', { type: 'text/plain' }), new File(['<svg/>'], 'vector.svg', { type: 'image/svg+xml' })]) {
-    assert.throws(() => createPhotoPreview(file), /JPG, PNG, WebP, GIF/)
+    assert.throws(() => createPhotoPreview(file), /JPG, JPEG, PNG, WEBP/)
   }
   assert.throws(() => createPhotoPreview(new File([], 'empty.png', { type: 'image/png' })), /비어 있는 파일/)
 })
