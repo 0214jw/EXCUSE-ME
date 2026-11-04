@@ -4,10 +4,10 @@ import { HomePage } from './MuseumPages.jsx'
 import { ArtworkDetailPage, GalleryPage, SubmitPage } from './ArtworkPages.jsx'
 import { getVisitorId } from './visitor.js'
 import ArtworkEditPage from './ArtworkEditPage.jsx'
+import HallOfFamePage from './HallOfFame.jsx'
 
 const notices = {
-  detail: { title: '디자인 확인용 예시 작품입니다.', message: '이 작품과 작가명·명작 인정 수는 가상이며 DB에 저장된 작품이 아닙니다. 실제 기증 작품은 상설 전시관 위쪽에서 감상할 수 있습니다.' },
-  hall: { title: '명예의 전당은 준비 중입니다.', message: '실제 투표와 순위는 아직 제공하지 않습니다. 예시 작품의 인기순은 가상 인정 수로 정렬하는 샘플입니다.' },
+  detail: { title: '디자인 확인용 예시 작품입니다.', message: '이 작품과 작가명·좋아요 수는 가상이며 DB에 저장된 작품이 아닙니다. 실제 기증 작품은 상설 전시관 위쪽에서 감상할 수 있습니다.' },
 }
 
 function Brand() {
@@ -34,15 +34,15 @@ export default function App() {
   else if (path === '/gallery') page = <GalleryPage onUnavailable={onUnavailable} />
   else if (path === '/health') page = <HealthCheck />
   else if (path === '/submit') page = <SubmitPage />
+  else if (path === '/hall-of-fame') page = <HallOfFamePage />
   else if (/^\/artworks\/[^/]+\/edit$/.test(path)) page = <ArtworkEditPage id={path.split('/')[2]} />
   else if (/^\/artworks\/[^/]+$/.test(path)) page = <ArtworkDetailPage id={path.split('/')[2]} />
   else {
-    const futurePage = path === '/hall-of-fame' ? notices.hall : null
     page = (
       <main id="main-content" className="page-width placeholder-page">
         <p className="eyebrow">EXCUSE ME! / INFORMATION</p>
-        <h1 className="section-title">{futurePage?.title || '전시실을 찾을 수 없습니다.'}</h1>
-        <p>{futurePage?.message || '주소를 확인하거나 상설 전시관으로 돌아가 주세요.'}</p>
+        <h1 className="section-title">전시실을 찾을 수 없습니다.</h1>
+        <p>주소를 확인하거나 상설 전시관으로 돌아가 주세요.</p>
         <a className="museum-button primary" href="/gallery">전시관으로 돌아가기 ↗</a>
       </main>
     )
@@ -57,7 +57,7 @@ export default function App() {
           <nav aria-label="상단 내비게이션">
             <a href="/" aria-current={path === '/' ? 'page' : undefined}>박물관 소개</a>
             <a href="/gallery" aria-current={path === '/gallery' ? 'page' : undefined}>상설 전시관</a>
-            <button type="button" onClick={() => onUnavailable('hall')}>명예의 전당<span className="coming-soon">준비 중</span></button>
+            <a href="/hall-of-fame" aria-current={path === '/hall-of-fame' ? 'page' : undefined}>명예의 전당</a>
           </nav>
           <a className="header-donate" href="/submit" aria-current={path === '/submit' ? 'page' : undefined}>작품 기증하기 <span aria-hidden="true">↗</span></a>
         </div>

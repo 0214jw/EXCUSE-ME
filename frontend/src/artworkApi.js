@@ -32,8 +32,10 @@ export async function artworkRequest(path, payload, options = {}) {
       ['title', 'content', 'category', 'author', 'created_at', 'updated_at'].every((key) => typeof item[key] === 'string') &&
       ['refined_description', 'image_url', 'image_style'].every((key) => item[key] == null || typeof item[key] === 'string') &&
       (item.image_mode == null || ['generated', 'photo'].includes(item.image_mode)) &&
-      (item.can_manage == null || typeof item.can_manage === 'boolean')
-    const expectingList = !saving && path === '/api/artworks'
+      (item.can_manage == null || typeof item.can_manage === 'boolean') &&
+      (item.recognition_count == null || (Number.isSafeInteger(item.recognition_count) && item.recognition_count >= 0)) &&
+      (item.recognized_by_me == null || typeof item.recognized_by_me === 'boolean')
+    const expectingList = !saving && ['/api/artworks', '/api/hall-of-fame'].includes(path.split('?')[0])
     if (expectingList ? !Array.isArray(data) || !data.every(validArtwork) : !validArtwork(data)) {
       throw new Error('Unexpected response')
     }

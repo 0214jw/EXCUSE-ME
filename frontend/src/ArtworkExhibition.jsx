@@ -2,7 +2,7 @@ import { artworkDescription, artworkImageUrl } from './artworkPresentation.js'
 import ArtworkVisual from './ArtworkVisual.jsx'
 
 // Data-driven exhibition view: no generation or upload request runs during viewing.
-export default function ArtworkExhibition({ artwork, actions = null }) {
+export default function ArtworkExhibition({ artwork, actions = null, recognition = null }) {
   const description = artworkDescription(artwork)
   const imageUrl = artworkImageUrl(artwork)
   const donatedAt = new Intl.DateTimeFormat('ko-KR', {
@@ -28,6 +28,7 @@ export default function ArtworkExhibition({ artwork, actions = null }) {
           <div><dt>기증 날짜</dt><dd><time dateTime={artwork.created_at}>{donatedAt}</time></dd></div>
           <div><dt>카테고리</dt><dd>{artwork.category}</dd></div>
         </dl>
+        {recognition}
         <a className="museum-button secondary" href="/submit">나의 핑계도 기증하기 ＋</a>
         {actions}
       </div>

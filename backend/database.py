@@ -24,6 +24,7 @@ DB_PATH = Path(os.environ.get("EXCUSE_ME_DB_PATH") or (
 def connection():
     db = sqlite3.connect(DB_PATH, timeout=2)
     db.row_factory = sqlite3.Row
+    db.execute("PRAGMA foreign_keys=ON")
     try:
         with db:
             yield db
@@ -68,5 +69,15 @@ def initialize():
                 reserved_cents INTEGER NOT NULL, filename TEXT, digest TEXT,
                 artwork_id INTEGER UNIQUE REFERENCES artworks(id),
                 UNIQUE(visitor_id, request_id)
+            )
+        """)
+        # Additive migration: one demo recognition per artwork and visitor.
+        # Deleting an artwork cascades inside its existing DB transaction.
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS artwork_recognitions (
+                artwork_id INTEGER NOT NULL REFERENCES artworks(id) ON DELETE CASCADE,
+                visitor_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (artwork_id, visitor_id)
             )
         """)

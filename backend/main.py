@@ -99,6 +99,17 @@ class ArtworkDelete(BaseModel):
     visitor_id: UUID4
 
 
+class RecognitionInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    visitor_id: UUID4
+
+
+class RecognitionResult(BaseModel):
+    artwork_id: int
+    recognition_count: int = Field(ge=0)
+    recognized_by_me: bool
+
+
 class ArtworkOutput(BaseModel):
     id: int
     title: str
@@ -115,6 +126,19 @@ class ArtworkOutput(BaseModel):
     image_style: str | None = None
     # Personalized demo ownership result; never expose the stored visitor ID.
     can_manage: bool = False
+    recognition_count: int = Field(default=0, ge=0)
+    recognized_by_me: bool = False
+
+
+# Counts come from actual rows, never from a mutable cached counter.
+ARTWORK_SELECT = """SELECT a.*,
+    (SELECT count(*) FROM artwork_recognitions r WHERE r.artwork_id=a.id) AS recognition_count,
+    EXISTS(SELECT 1 FROM artwork_recognitions r WHERE r.artwork_id=a.id AND r.visitor_id=?) AS recognized_by_me
+    FROM artworks a"""
+
+
+def artwork_row(db, artwork_id, visitor_id=None):
+    return db.execute(ARTWORK_SELECT + " WHERE a.id=?", (visitor_id, artwork_id)).fetchone()
 
 
 @app.exception_handler(RequestValidationError)
@@ -127,6 +151,7 @@ async def invalid_input(request, exc):
         "visitor_id": "방문객 ID가 없거나 올바르지 않습니다. 브라우저 저장 설정을 확인해 주세요.",
         "request_id": "등록 요청 번호가 올바르지 않습니다. 화면을 새로 열어 주세요.",
         "artwork_id": "작품 번호는 1 이상의 정수여야 합니다.",
+        "order": "정렬은 latest 또는 popular 중 하나를 선택해 주세요.",
         "refined_description": "작품 설명은 최대 1000자의 문자열로 입력해 주세요.",
         "description_confirmed": "작품 설명 확인 여부를 선택해 주세요.",
         "image_style": "수채화·유화·점묘화·연필 드로잉·콜라주 중 하나를 선택해 주세요.",
@@ -198,7 +223,7 @@ def create_artwork(artwork: ArtworkInput, response: Response):
                        (image_url, image["style"], row["id"]))
             db.execute("UPDATE image_generations SET artwork_id=? WHERE id=?", (row["id"], image["id"]))
             row = db.execute("SELECT * FROM artworks WHERE id=?", (row["id"],)).fetchone()
-        result = dict(row)
+        result = dict(artwork_row(db, row["id"]))
     response.headers["Location"] = f"/api/artworks/{result['id']}"
     return result
 
@@ -222,18 +247,34 @@ def get_artwork_image(artwork_id: Annotated[int, Path(ge=1, le=92233720368547758
 
 
 @app.get("/api/artworks", response_model=list[ArtworkOutput])
-def list_artworks():
+def list_artworks(response: Response = None, order: Literal["latest", "popular"] = "latest",
+                  category: str | None = None):
+    if category is not None and category not in CATEGORIES:
+        raise HTTPException(422, "지각·조퇴, 휴가·병가, 약속, 운동, 기타 중 하나를 선택해 주세요.")
+    where = " WHERE a.category=?" if category is not None else ""
+    # User's Phase 4 policy overrides older planning-document tie rules.
+    sort = "recognition_count DESC, a.created_at ASC, a.id ASC" if order == "popular" else "a.created_at DESC, a.id DESC"
     with connection() as db:
-        return [dict(row) for row in db.execute(
-            "SELECT * FROM artworks ORDER BY created_at DESC, id DESC"
-        ).fetchall()]
+        rows = db.execute(ARTWORK_SELECT + where + " ORDER BY " + sort,
+                          (None, category) if category is not None else (None,)).fetchall()
+    if response is not None:
+        response.headers["Cache-Control"] = "no-store"
+    return [dict(row) for row in rows]
+
+
+@app.get("/api/hall-of-fame", response_model=list[ArtworkOutput])
+def hall_of_fame(response: Response):
+    with connection() as db:
+        rows = db.execute(ARTWORK_SELECT + " ORDER BY recognition_count DESC, a.created_at ASC, a.id ASC LIMIT 10", (None,)).fetchall()
+    response.headers["Cache-Control"] = "no-store"
+    return [dict(row) for row in rows]
 
 
 @app.get("/api/artworks/{artwork_id}", response_model=ArtworkOutput)
 def get_artwork(artwork_id: Annotated[int, Path(ge=1, le=9223372036854775807)], response: Response = None,
                 visitor_id: Annotated[UUID4 | None, Header(alias="X-Visitor-ID")] = None):
     with connection() as db:
-        row = db.execute("SELECT * FROM artworks WHERE id = ?", (artwork_id,)).fetchone()
+        row = artwork_row(db, artwork_id, str(visitor_id) if visitor_id is not None else None)
     if row is None:
         raise HTTPException(404, "작품을 찾을 수 없습니다.")
     if response is not None:
@@ -263,7 +304,7 @@ def update_artwork(artwork_id: Annotated[int, Path(ge=1, le=9223372036854775807)
                    refined_description=?, updated_at=? WHERE id=?""",
                    (data.title, data.content, data.category, data.author, description,
                     datetime.now(timezone.utc).isoformat(timespec="microseconds"), artwork_id))
-        result = dict(db.execute("SELECT * FROM artworks WHERE id=?", (artwork_id,)).fetchone())
+        result = dict(artwork_row(db, artwork_id, str(data.visitor_id)))
     response.headers["Cache-Control"] = "no-store"
     return {**result, "can_manage": True}
 
@@ -279,3 +320,35 @@ def delete_artwork(artwork_id: Annotated[int, Path(ge=1, le=9223372036854775807)
         db.execute("UPDATE image_generations SET artwork_id=NULL, status='expired' WHERE artwork_id=?", (artwork_id,))
         db.execute("DELETE FROM artworks WHERE id=?", (artwork_id,))
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+def set_recognition(artwork_id, visitor_id, recognized):
+    visitor = str(visitor_id)
+    with connection() as db:
+        db.execute("BEGIN IMMEDIATE")
+        if not db.execute("SELECT 1 FROM artworks WHERE id=?", (artwork_id,)).fetchone():
+            raise HTTPException(404, "작품을 찾을 수 없습니다. 이미 삭제되었을 수 있습니다.")
+        # Explicit add/remove rather than a blind toggle: retries cannot invert a vote.
+        # Self-recognition is allowed for this local demo, per the user's policy.
+        if recognized:
+            db.execute("INSERT INTO artwork_recognitions(artwork_id,visitor_id,created_at) VALUES (?,?,?) ON CONFLICT(artwork_id,visitor_id) DO NOTHING",
+                       (artwork_id, visitor, datetime.now(timezone.utc).isoformat(timespec="microseconds")))
+        else:
+            db.execute("DELETE FROM artwork_recognitions WHERE artwork_id=? AND visitor_id=?", (artwork_id, visitor))
+        row = artwork_row(db, artwork_id, visitor)
+        return {"artwork_id": artwork_id, "recognition_count": row["recognition_count"],
+                "recognized_by_me": bool(row["recognized_by_me"])}
+
+
+@app.put("/api/artworks/{artwork_id}/recognition", response_model=RecognitionResult)
+def recognize_artwork(artwork_id: Annotated[int, Path(ge=1, le=9223372036854775807)], data: RecognitionInput, response: Response):
+    result = set_recognition(artwork_id, data.visitor_id, True)
+    response.headers["Cache-Control"] = "no-store"
+    return result
+
+
+@app.delete("/api/artworks/{artwork_id}/recognition", response_model=RecognitionResult)
+def cancel_recognition(artwork_id: Annotated[int, Path(ge=1, le=9223372036854775807)], data: RecognitionInput, response: Response):
+    result = set_recognition(artwork_id, data.visitor_id, False)
+    response.headers["Cache-Control"] = "no-store"
+    return result

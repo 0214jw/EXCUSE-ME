@@ -1,0 +1,15 @@
+.recognition-panel { margin-block: 24px; padding-block: 22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.recognition-control { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.like-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--wine); cursor: pointer; }
+.like-icon { display: block; width: 32px; height: 32px; flex-shrink: 0; }
+.like-button:disabled { cursor: default; }
+.like-button:disabled:not([aria-busy="true"]) { opacity: .6; }
+.like-button[aria-busy="true"] { cursor: wait; }
+.recognition-count { margin: 0; color: var(--wine); }
+.recognition-count strong { font-family: Georgia, serif; font-size: 28px; font-weight: 400; line-height: 1; }
+.recognition-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.artwork-like-count { color: var(--wine); }
+.artwork-like-count > span { font-family: Georgia, "Times New Roman", serif; font-size: 16px; line-height: 1; }
+.recognition-error { margin-top: 16px; font-size: 12px; line-height: 1.8; color: var(--wine); }
+.recognition-error .text-link { margin-right: 16px; }
+.recognition-panel .text-link:disabled { opacity: .6; cursor: wait; }

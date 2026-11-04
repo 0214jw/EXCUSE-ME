@@ -14,6 +14,7 @@ import usePainting from './usePainting.js'
 import { paintingDonationFields } from './paintingState.js'
 import ArtworkVisual from './ArtworkVisual.jsx'
 import { ArtworkOwnerActions } from './ArtworkManagement.jsx'
+import ArtworkRecognition from './ArtworkRecognition.jsx'
 
 const filters = ['전체', ...artworkCategories]
 const formatDate = (date) => new Intl.DateTimeFormat('ko-KR', {
@@ -32,17 +33,18 @@ export function ResourceNotice({ resource }) {
   )
 }
 
-export function LiveArtworkCard({ artwork }) {
+export function LiveArtworkCard({ artwork, rank = null }) {
   return (
-    <article className="artwork-card" aria-labelledby={`collection-${artwork.id}`}>
+    <article className={`artwork-card${rank ? ` award-card${rank <= 3 ? ' award-card--laureate' : ''}` : ''}`} aria-labelledby={`collection-${artwork.id}`}>
       <a className="artwork-open" href={`/artworks/${artwork.id}`} aria-label={`${artwork.title} 감상하기`}>
+        {rank && <span className="award-rank"><strong>{rank}위</strong><span>{rank <= 3 ? '관람객 선정 · TOP 3' : 'HALL OF FAME'}</span></span>}
         <ArtworkVisual artwork={artwork} />
         <span className="artwork-label">
           <span className="artwork-label-top"><span>작품 № {String(artwork.id).padStart(3, '0')}</span><span>{artwork.category}</span></span>
           <span id={`collection-${artwork.id}`} role="heading" aria-level="2" className="artwork-title">{artwork.title}<span aria-hidden="true">↗</span></span>
           <span className="artwork-excerpt">{artwork.content}</span>
           <span className="artwork-author">작가 · {artwork.author}</span>
-          <span className="artwork-label-bottom"><time dateTime={artwork.created_at}>{formatDate(artwork.created_at)}</time><span>감상하기 ↗</span></span>
+          <span className="artwork-label-bottom"><time dateTime={artwork.created_at}>{formatDate(artwork.created_at)}</time><span className="artwork-like-count"><span aria-hidden="true">♡</span> <span className="recognition-sr-only">좋아요 </span>{artwork.recognition_count ?? '—'}</span><span>감상하기 ↗</span></span>
         </span>
       </a>
     </article>
@@ -52,8 +54,9 @@ export function LiveArtworkCard({ artwork }) {
 export function GalleryPage({ onUnavailable }) {
   const resource = useArtworkResource('/api/artworks')
   const [category, setCategory] = useState('전체')
+  const [order, setOrder] = useState('latest')
   const allArtworks = resource.data || []
-  const artworks = selectArtworks(allArtworks, category)
+  const artworks = selectArtworks(allArtworks, category, order)
   return (
     <main id="main-content" className="page-width gallery-page">
       <section aria-labelledby="gallery-title">
@@ -62,7 +65,7 @@ export function GalleryPage({ onUnavailable }) {
           <div className="category-filters" role="group" aria-label="기증 작품 카테고리">{filters.map((item) => (
             <button key={item} type="button" aria-pressed={category === item} className={`category-button ${category === item ? 'is-active' : ''}`} onClick={() => setCategory(item)}>{item}<span aria-hidden="true">{resource.status === 'success' ? selectArtworks(allArtworks, item).length : '—'}</span></button>
           ))}</div>
-          <span className="sort-control">최신 기증순</span>
+          <label className="sort-control">정렬<select value={order} onChange={(event) => setOrder(event.target.value)}><option value="latest">최신 기증순</option><option value="popular">인기순 · 좋아요</option></select></label>
         </div>
         <ResourceNotice resource={resource} />
         {resource.status === 'success' && <>
@@ -179,7 +182,9 @@ export function ArtworkDetailPage({ id }) {
     <main id="main-content" className="page-width detail-page">
       <a className="text-link" href="/gallery">← 상설 전시관</a>
       <ResourceNotice resource={resource} />
-      {resource.status === 'success' && <ArtworkExhibition artwork={artwork} actions={<ArtworkOwnerActions artwork={artwork} visitorId={resource.visitorId} />} />}
+      {resource.status === 'success' && <ArtworkExhibition artwork={artwork}
+        recognition={<ArtworkRecognition key={resource.visitorId || 'anonymous'} artwork={artwork} visitorId={resource.visitorId} />}
+        actions={<ArtworkOwnerActions artwork={artwork} visitorId={resource.visitorId} />} />}
     </main>
   )
 }

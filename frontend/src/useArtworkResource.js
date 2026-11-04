@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { artworkRequest } from './artworkApi.js'
-import { readVisitorId } from './visitor.js'
+import { getVisitorId } from './visitor.js'
 
 export default function useArtworkResource(path) {
   const [attempt, setAttempt] = useState(0)
@@ -8,7 +8,10 @@ export default function useArtworkResource(path) {
   useEffect(() => {
     let active = true
     setResource({ path, status: 'loading', data: null, error: null })
-    const visitorId = /^\/api\/artworks\/\d+$/.test(path) ? readVisitorId() : null
+    let visitorId = null
+    if (/^\/api\/artworks\/\d+$/.test(path)) {
+      try { visitorId = getVisitorId().toLowerCase() } catch { /* Public viewing remains available without storage. */ }
+    }
     artworkRequest(path, undefined, { visitorId }).then(
       (data) => { if (active) setResource({ path, status: 'success', data, error: null, visitorId }) },
       (error) => { if (active) setResource({ path, status: 'error', data: null, error }) },

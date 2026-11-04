@@ -49,7 +49,11 @@ test('real React pages render donation links, form, separate samples and preserv
     assert.match(render('/artworks/1'), /모셔오는 중/)
     assert.match(render('/artworks/1/edit'), /내 작품 수정하기/)
     assert.match(render('/health'), /서버 연결 확인/)
-    assert.match(render('/hall-of-fame'), /명예의 전당은 준비 중/)
+    const hall = render('/hall-of-fame')
+    assert.match(hall, /id="hall-title"/)
+    assert.match(hall, /명예의 전당 소장품을 불러오는 중/)
+    assert.match(home, /href="\/hall-of-fame"/)
+    assert.match(gallery, /option value="popular"/)
   } finally {
     if (previousWindow === undefined) delete globalThis.window
     else globalThis.window = previousWindow

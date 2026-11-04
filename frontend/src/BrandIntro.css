@@ -1,0 +1,39 @@
+.brand-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: clamp(32px, 6svh, 80px) clamp(12px, 1.5vw, 28px);
+  container-type: inline-size;
+  background: #090909;
+  color: var(--wine);
+}
+
+.brand-intro-wordmark {
+  margin: 0;
+  width: 100%;
+  font-family: "Arial Black", "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+  font-size: 18vw;
+  font-size: 18cqw;
+  font-weight: 900;
+  line-height: .84;
+  letter-spacing: -.055em;
+  text-align: right;
+  animation: brand-intro-appear 500ms ease-out both;
+}
+
+.brand-intro-wordmark > span {
+  display: block;
+  white-space: nowrap;
+}
+
+@keyframes brand-intro-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-intro-wordmark { animation: none; }
+}

@@ -78,6 +78,21 @@ class ExhibitionMigrationTests(unittest.TestCase):
             self.assertEqual(tuple(db.execute("SELECT * FROM artworks WHERE id = 42").fetchone()), LEGACY_ROW)
             self.assertEqual(len(db.execute("PRAGMA table_info(artworks)").fetchall()), 9)
 
+    def test_recognition_migration_is_additive_unique_and_cascades(self):
+        database.initialize()
+        with database.connection() as db:
+            self.assertEqual(tuple(db.execute('SELECT * FROM artworks WHERE id=42').fetchone())[:9], LEGACY_ROW)
+            db.execute("INSERT INTO artwork_recognitions VALUES(42,'demo','2026-11-04')")
+        database.initialize()
+        with database.connection() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM artwork_recognitions').fetchone()[0], 1)
+            with self.assertRaises(sqlite3.IntegrityError):
+                db.execute("INSERT INTO artwork_recognitions VALUES(42,'demo','2026-11-04')")
+            with self.assertRaises(sqlite3.IntegrityError):
+                db.execute("INSERT INTO artwork_recognitions VALUES(999,'demo','2026-11-04')")
+            db.execute('DELETE FROM artworks WHERE id=42')
+            self.assertEqual(db.execute('SELECT count(*) FROM artwork_recognitions').fetchone()[0], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
