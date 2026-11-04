@@ -5,6 +5,7 @@ import { ArtworkDetailPage, GalleryPage, SubmitPage } from './ArtworkPages.jsx'
 import { getVisitorId } from './visitor.js'
 import ArtworkEditPage from './ArtworkEditPage.jsx'
 import HallOfFamePage from './HallOfFame.jsx'
+import RandomArtworkPage from './RandomArtwork.jsx'
 
 const notices = {
   detail: { title: '디자인 확인용 예시 작품입니다.', message: '이 작품과 작가명·좋아요 수는 가상이며 DB에 저장된 작품이 아닙니다. 실제 기증 작품은 상설 전시관 위쪽에서 감상할 수 있습니다.' },
@@ -35,6 +36,7 @@ export default function App() {
   else if (path === '/health') page = <HealthCheck />
   else if (path === '/submit') page = <SubmitPage />
   else if (path === '/hall-of-fame') page = <HallOfFamePage />
+  else if (path === '/random') page = <RandomArtworkPage />
   else if (/^\/artworks\/[^/]+\/edit$/.test(path)) page = <ArtworkEditPage id={path.split('/')[2]} />
   else if (/^\/artworks\/[^/]+$/.test(path)) page = <ArtworkDetailPage id={path.split('/')[2]} />
   else {
@@ -58,6 +60,7 @@ export default function App() {
             <a href="/" aria-current={path === '/' ? 'page' : undefined}>박물관 소개</a>
             <a href="/gallery" aria-current={path === '/gallery' ? 'page' : undefined}>상설 전시관</a>
             <a href="/hall-of-fame" aria-current={path === '/hall-of-fame' ? 'page' : undefined}>명예의 전당</a>
+            <a href="/random" aria-current={path === '/random' ? 'page' : undefined}>운명의 작품 만나기</a>
           </nav>
           <a className="header-donate" href="/submit" aria-current={path === '/submit' ? 'page' : undefined}>작품 기증하기 <span aria-hidden="true">↗</span></a>
         </div>

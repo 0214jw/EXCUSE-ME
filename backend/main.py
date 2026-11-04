@@ -2,10 +2,11 @@ import re
 import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from secrets import randbelow
 from typing import Annotated, Literal
 from uuid import uuid4
 
-from fastapi import FastAPI, Header, HTTPException, Path, Request, Response
+from fastapi import FastAPI, Header, HTTPException, Path, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -151,6 +152,7 @@ async def invalid_input(request, exc):
         "visitor_id": "방문객 ID가 없거나 올바르지 않습니다. 브라우저 저장 설정을 확인해 주세요.",
         "request_id": "등록 요청 번호가 올바르지 않습니다. 화면을 새로 열어 주세요.",
         "artwork_id": "작품 번호는 1 이상의 정수여야 합니다.",
+        "exclude_id": "직전 작품 번호는 1 이상의 정수여야 합니다.",
         "order": "정렬은 latest 또는 popular 중 하나를 선택해 주세요.",
         "refined_description": "작품 설명은 최대 1000자의 문자열로 입력해 주세요.",
         "description_confirmed": "작품 설명 확인 여부를 선택해 주세요.",
@@ -268,6 +270,29 @@ def hall_of_fame(response: Response):
         rows = db.execute(ARTWORK_SELECT + " ORDER BY recognition_count DESC, a.created_at ASC, a.id ASC LIMIT 10", (None,)).fetchall()
     response.headers["Cache-Control"] = "no-store"
     return [dict(row) for row in rows]
+
+
+@app.get("/api/artworks/random", response_model=ArtworkOutput | None)
+def random_artwork(response: Response,
+                   exclude_id: Annotated[int | None, Query(ge=1, le=9223372036854775807)] = None):
+    response.headers["Cache-Control"] = "no-store"
+    with connection() as db:
+        # One read snapshot for count, selection and presentation. Only donated
+        # artworks are public; private image_generations are never candidates.
+        db.execute("BEGIN")
+        where, parameters = (" WHERE id != ?", (exclude_id,)) if exclude_id is not None else ("", ())
+        count = db.execute("SELECT count(*) FROM artworks" + where, parameters).fetchone()[0]
+        if count == 0 and exclude_id is not None:
+            # A single remaining work is still available, even if just viewed.
+            where, parameters = "", ()
+            count = db.execute("SELECT count(*) FROM artworks").fetchone()[0]
+        if count == 0:
+            return None
+        # Uniform over actual rows, including gaps left by deletion. Select one
+        # indexed ID rather than downloading/sorting every complete artwork.
+        row = db.execute("SELECT id FROM artworks" + where + " ORDER BY id LIMIT 1 OFFSET ?",
+                         (*parameters, randbelow(count))).fetchone()
+        return dict(artwork_row(db, row["id"]))
 
 
 @app.get("/api/artworks/{artwork_id}", response_model=ArtworkOutput)

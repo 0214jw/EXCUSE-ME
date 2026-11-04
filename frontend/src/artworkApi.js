@@ -28,6 +28,8 @@ export async function artworkRequest(path, payload, options = {}) {
       if (response.status !== 204) throw new Error('Unexpected deletion response')
       return null
     }
+    // Only the random endpoint uses a successful null for an empty exhibition.
+    if (!saving && path.split('?')[0] === '/api/artworks/random' && data === null) return null
     const validArtwork = (item) => item && Number.isInteger(item.id) && item.id > 0 &&
       ['title', 'content', 'category', 'author', 'created_at', 'updated_at'].every((key) => typeof item[key] === 'string') &&
       ['refined_description', 'image_url', 'image_style'].every((key) => item[key] == null || typeof item[key] === 'string') &&

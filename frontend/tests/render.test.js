@@ -54,6 +54,12 @@ test('real React pages render donation links, form, separate samples and preserv
     assert.match(hall, /명예의 전당 소장품을 불러오는 중/)
     assert.match(home, /href="\/hall-of-fame"/)
     assert.match(gallery, /option value="popular"/)
+    const random = render('/random')
+    assert.match(home, /href="\/random"/)
+    assert.match(random, /href="\/random" aria-current="page"/)
+    assert.match(random, /id="random-title">운명의 작품 만나기/)
+    assert.match(random, /오늘의 인연이 될 작품을 찾고 있습니다/)
+    assert.doesNotMatch(random, /sample-collection|poster-hero|brand-intro/)
   } finally {
     if (previousWindow === undefined) delete globalThis.window
     else globalThis.window = previousWindow
