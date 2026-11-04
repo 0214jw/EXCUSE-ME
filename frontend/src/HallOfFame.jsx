@@ -5,7 +5,7 @@ import './HallOfFame.css'
 export function HallExhibition({ resource }) {
   if (resource.status === 'loading') return <div className="collection-notice" role="status">명예의 전당 소장품을 불러오는 중입니다…</div>
   if (resource.status === 'error') return <div className="collection-notice error-notice" role="alert">
-    <p>명예의 전당을 불러오지 못했습니다. {resource.error.message}</p>
+    <p>명예의 전당을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
     <button className="text-link" type="button" onClick={resource.reload}>다시 불러오기 ↗</button>
     <a className="text-link" href="/gallery">상설 전시관 ↗</a>
   </div>

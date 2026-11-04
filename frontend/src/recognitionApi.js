@@ -1,4 +1,5 @@
 import { apiBaseUrl, ApiError, artworkRequest } from './artworkApi.js'
+import { serverMessage } from './apiMessages.js'
 
 export function recognitionValue(data, artworkId) {
   if (!data || data.artwork_id !== artworkId || !Number.isSafeInteger(data.recognition_count) ||
@@ -20,7 +21,7 @@ export async function requestRecognition(artworkId, visitorId, recognized) {
       body: JSON.stringify({ visitor_id: visitorId }), signal: AbortSignal.timeout(8000), cache: 'no-store',
     })
     const data = await response.json()
-    if (!response.ok) throw new ApiError(typeof data.detail === 'string' ? data.detail : '좋아요 요청을 처리하지 못했습니다.', response.status)
+    if (!response.ok) throw new ApiError(serverMessage(response.status, 'recognition'), response.status)
     return recognitionValue(data, artworkId)
   } catch (error) {
     if (error instanceof ApiError) throw error

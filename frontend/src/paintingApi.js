@@ -1,4 +1,5 @@
 import { apiBaseUrl, ApiError } from './artworkApi.js'
+import { serverMessage } from './apiMessages.js'
 
 export async function requestPainting(payload) {
   try {
@@ -7,7 +8,7 @@ export async function requestPainting(payload) {
       body: JSON.stringify(payload), signal: AbortSignal.timeout(150000), cache: 'no-store',
     })
     const data = await response.json()
-    if (!response.ok) throw new ApiError(typeof data.detail === 'string' ? data.detail : '이미지 생성 요청에 실패했습니다.', response.status)
+    if (!response.ok) throw new ApiError(serverMessage(response.status, 'painting'), response.status)
     if (!/^[A-Za-z0-9_-]{43}$/.test(data.image_token) ||
         typeof data.preview_data_url !== 'string' || data.preview_data_url.length > 17 * 1024 * 1024 ||
         !/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(data.preview_data_url) ||

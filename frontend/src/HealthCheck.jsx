@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 const apiBaseUrl = (
   import.meta.env.VITE_API_BASE_URL?.trim() || 'http://127.0.0.1:8000'
@@ -12,6 +12,7 @@ const statusLabels = {
 }
 
 export default function HealthCheck() {
+  const busy = useRef(false)
   const [connection, setConnection] = useState({
     status: 'idle',
     message: '버튼을 눌러 서버 연결 상태를 확인해 주세요.',
@@ -19,6 +20,8 @@ export default function HealthCheck() {
   })
 
   async function checkConnection() {
+    if (busy.current) return
+    busy.current = true
     setConnection({
       status: 'loading',
       message: '서버 응답을 기다리고 있습니다.',
@@ -34,7 +37,7 @@ export default function HealthCheck() {
       if (!response.ok) {
         setConnection({
           status: 'error',
-          message: `서버가 오류를 반환했습니다. (HTTP ${response.status}) 다시 시도해 주세요.`,
+          message: '서버 연결을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
           response: null,
         })
         return
@@ -44,7 +47,7 @@ export default function HealthCheck() {
       if (data?.status !== 'ok') {
         setConnection({
           status: 'error',
-          message: '서버 응답이 예상한 형식과 다릅니다. 서버 설정을 확인해 주세요.',
+          message: '서버 연결을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
           response: null,
         })
         return
@@ -56,14 +59,14 @@ export default function HealthCheck() {
         response: data,
       })
     } catch (error) {
-      let message = '서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인한 뒤 다시 시도해 주세요.'
+      let message = '서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.'
       if (error.name === 'TimeoutError') {
         message = '5초 안에 서버 응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요.'
       } else if (error instanceof SyntaxError) {
-        message = '서버 응답을 읽을 수 없습니다. 서버 설정을 확인해 주세요.'
+        message = '서버 연결을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.'
       }
       setConnection({ status: 'error', message, response: null })
-    }
+    } finally { busy.current = false }
   }
 
   const isLoading = connection.status === 'loading'
@@ -71,14 +74,15 @@ export default function HealthCheck() {
   return (
     <main id="main-content" className="health-page page-width">
       <section aria-labelledby="page-title" className="health-panel">
-        <p className="eyebrow">DEVELOPMENT / PHASE 0</p>
+        <p className="eyebrow">MUSEUM / CONNECTION</p>
         <h1 id="page-title" className="section-title">서버 연결 확인</h1>
-        <p className="mt-4 leading-relaxed">기존 Phase 0 연결 테스트입니다. 백엔드 서버를 켜고 버튼을 눌러 주세요.</p>
+        <p className="mt-4 leading-relaxed">전시실 연결이 원활한지 확인해 보세요.</p>
 
         <button
           type="button"
           onClick={checkConnection}
           disabled={isLoading}
+          aria-busy={isLoading}
           className="museum-button primary mt-8 disabled:cursor-wait disabled:opacity-60"
         >
           {isLoading ? '연결 확인 중…' : '서버 연결 확인'}
@@ -89,11 +93,6 @@ export default function HealthCheck() {
             {statusLabels[connection.status]}
           </p>
           <p className="mt-2 break-words text-sm leading-relaxed text-slate-600">{connection.message}</p>
-          {connection.response && (
-            <pre className="mt-4 overflow-x-auto rounded-md bg-slate-900 p-4 text-sm text-emerald-300">
-              <code>{JSON.stringify(connection.response)}</code>
-            </pre>
-          )}
         </div>
       </section>
     </main>

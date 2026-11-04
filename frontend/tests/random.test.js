@@ -135,7 +135,7 @@ test('random room reuses gold image/text frames, saved description and real meta
     assert.match(image, /exhibition-image/)
     assert.match(image, /\/api\/artworks\/42\/image/)
     const legacy = render({ ...state, data: { ...artwork, refined_description: null } })
-    assert.match(legacy, /원문 핑계를 바탕으로 한 임시 설명/)
+    assert.match(legacy, /원문 핑계를 바탕으로 전시합니다/)
     assert.match(render({ ...state, pending: true }), /disabled=""/)
     assert.match(render({ status: 'loading', data: null }), /role="status"/)
     const empty = render({ ...state, data: null })

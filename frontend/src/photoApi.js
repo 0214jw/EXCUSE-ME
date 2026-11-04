@@ -1,5 +1,6 @@
 import { apiBaseUrl, ApiError } from './artworkApi.js'
 import { validatePhotoFile } from './artworkCreation.js'
+import { serverMessage } from './apiMessages.js'
 
 function uploadToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(32))
@@ -16,7 +17,7 @@ export async function uploadPhoto(file, visitorId, attempt, { signal } = {}) {
         'X-Upload-Token': attempt.token, 'X-File-Name': encodeURIComponent(file.name) },
     })
     const data = await response.json()
-    if (!response.ok) throw new ApiError(typeof data.detail === 'string' ? data.detail : '사진 업로드를 처리하지 못했습니다.', response.status)
+    if (!response.ok) throw new ApiError(serverMessage(response.status, 'photo'), response.status)
     if (data.photo_token !== attempt.token || !Number.isFinite(data.expires_at) || data.size !== file.size || data.media_type !== mediaType) throw new Error('Unexpected photo response')
     return data
   } catch (error) {

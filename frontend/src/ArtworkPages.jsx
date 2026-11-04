@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { artworkCategories, characterCount, normalizeArtwork, selectArtworks, trimText, validateArtwork } from './artworkRules.js'
-import { artworkRequest } from './artworkApi.js'
+import { ApiError, artworkRequest, userMessage } from './artworkApi.js'
 import { createRequestId, getVisitorId, readVisitorId } from './visitor.js'
 import useArtworkResource from './useArtworkResource.js'
 import { SampleCollection } from './MuseumPages.jsx'
@@ -28,7 +28,7 @@ export function ResourceNotice({ resource }) {
   if (resource.status !== 'error') return null
   return (
     <div className="collection-notice error-notice" role="alert">
-      <p>{resource.error.status === 404 ? '작품을 찾을 수 없습니다. 주소를 확인해 주세요.' : resource.error.message}</p>
+      <p>{resource.error.status === 404 ? '작품을 찾을 수 없습니다. 주소를 확인해 주세요.' : '작품을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'}</p>
       {resource.error.status !== 404 && <button className="text-link" type="button" onClick={resource.reload}>다시 불러오기 ↗</button>}
       <a className="text-link" href="/gallery">전시관으로 돌아가기 ↗</a>
     </div>
@@ -140,19 +140,19 @@ export function SubmitPage() {
         photoAbort.current = controller
         setPhotoUploading(true)
         payload.photo_token = await photoUpload.current.tokenFor(photo.file, payload.visitor_id, { signal: controller.signal })
-        if (controller.signal.aborted) throw new Error('사진 업로드를 취소했습니다. 입력과 사진 선택은 유지됩니다.')
+        if (controller.signal.aborted) throw new ApiError('사진 업로드를 취소했습니다. 입력과 사진 선택은 유지됩니다.')
         setPhotoUploading(false)
         photoAbort.current = null
-        if (readVisitorId() !== payload.visitor_id.toLowerCase()) throw new Error('방문객 정보가 변경되었습니다. 사진과 입력을 유지한 채 페이지의 저장 결과를 확인해 주세요.')
+        if (readVisitorId() !== payload.visitor_id.toLowerCase()) throw new ApiError('방문객 정보가 변경되었습니다. 사진과 입력을 유지한 채 페이지의 저장 결과를 확인해 주세요.')
       }
-      if (creationMode === 'generated' && !payload.image_token) throw new Error('이미지를 다시 확인해 주세요. 기증 가능 시간이 만료되었을 수 있습니다.')
+      if (creationMode === 'generated' && !payload.image_token) throw new ApiError('이미지를 다시 확인해 주세요. 기증 가능 시간이 만료되었을 수 있습니다.')
       const fingerprint = JSON.stringify(payload)
       if (pending.current?.fingerprint !== fingerprint) pending.current = { fingerprint, id: createRequestId() }
       const artwork = await artworkRequest('/api/artworks', { ...payload, request_id: pending.current.id })
       window.location.assign(`/artworks/${artwork.id}`)
     } catch (error) {
       setErrors(error.fields || {})
-      setMessage(error.message)
+      setMessage(userMessage(error, '기증 결과를 확인하지 못했습니다. 입력은 유지됩니다. 전시관에서 저장 결과를 확인해 주세요.'))
       requestAnimationFrame(() => errorRef.current?.focus())
     } finally {
       setPhotoUploading(false)
@@ -186,8 +186,8 @@ export function SubmitPage() {
           {photoUploading && <button className="text-link" type="button" onClick={() => photoAbort.current?.abort()}>사진 업로드 취소</button>}
           <p className="visitor-note">회원가입 없이 참여하는 데모입니다. 브라우저에 임시 방문객 ID를 보관하며 실제 인증 수단은 아닙니다. 저장 정보를 지우면 이전 ID를 잃을 수 있습니다.</p>
           {message && <div className="error-notice form-error" role="alert" tabIndex="-1" ref={errorRef}><p>{message}</p><a className="text-link" href="/gallery">전시관에서 확인하기 ↗</a></div>}
-          <div className="form-actions"><a className="text-link" href="/gallery">전시관으로 돌아가기</a><button className="museum-button primary" type="submit" disabled={saving || curator.state.status === 'loading' || painting.state.status === 'loading' || Boolean(imageDonationBlockReason(creationMode, painting.ready, photo.ready))}>{saving ? '작품을 기증하는 중…' : painting.state.status === 'loading' ? '회화 제작을 기다리는 중…' : curator.state.status === 'loading' ? 'AI 추천 응답을 기다리는 중…' : creationMode === 'generated' ? 'AI 회화 작품 기증하기 ＋' : creationMode === 'photo' ? '사진 작품 기증하기 ＋' : '텍스트 작품 기증하기 ＋'}</button></div>
-          <p className="field-hint" role="status" aria-live="polite">{saving ? '기증 결과를 기다리고 있습니다. 잠시만 기다려 주세요.' : imageDonationBlockReason(creationMode, painting.ready, photo.ready) || '기증이 완료되면 작품 감상실로 안내합니다.'}</p>
+          <div className="form-actions"><a className="text-link" href="/gallery">전시관으로 돌아가기</a><button className="museum-button primary" type="submit" aria-busy={saving} disabled={saving || curator.state.status === 'loading' || painting.state.status === 'loading' || Boolean(imageDonationBlockReason(creationMode, painting.ready, photo.ready))}>{photoUploading ? '사진을 업로드하는 중…' : saving ? '작품을 기증하는 중…' : painting.state.status === 'loading' ? '회화 제작을 기다리는 중…' : curator.state.status === 'loading' ? 'AI 추천 응답을 기다리는 중…' : creationMode === 'generated' ? 'AI 회화 작품 기증하기 ＋' : creationMode === 'photo' ? '사진 작품 기증하기 ＋' : '텍스트 작품 기증하기 ＋'}</button></div>
+          <p className="field-hint" role="status" aria-live="polite">{photoUploading ? '사진을 업로드하고 있습니다. 업로드 중에는 취소할 수 있습니다.' : saving ? '기증 결과를 기다리고 있습니다. 잠시만 기다려 주세요.' : imageDonationBlockReason(creationMode, painting.ready, photo.ready) || '기증이 완료되면 작품 감상실로 안내합니다.'}</p>
         </form>
       </div>
     </main>

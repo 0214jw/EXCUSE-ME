@@ -1,3 +1,5 @@
+import { serverFieldMessages, serverMessage } from './apiMessages.js'
+
 export const apiBaseUrl = (import.meta.env?.VITE_API_BASE_URL?.trim() || 'http://127.0.0.1:8000').replace(/\/+$/, '')
 
 export class ApiError extends Error {
@@ -7,6 +9,8 @@ export class ApiError extends Error {
     this.fields = fields
   }
 }
+
+export const userMessage = (error, fallback) => error instanceof ApiError ? error.message : fallback
 
 export async function artworkRequest(path, payload, options = {}) {
   const method = options.method || (payload !== undefined ? 'POST' : 'GET')
@@ -23,7 +27,7 @@ export async function artworkRequest(path, payload, options = {}) {
     const data = response.status === 204 ? null : await response.json()
     const cleanupPending = response.headers?.get?.('X-Photo-Cleanup') === 'pending'
     if (!response.ok) {
-      throw new ApiError(typeof data.detail === 'string' ? data.detail : '요청을 처리할 수 없습니다.', response.status, data.errors || {})
+      throw new ApiError(serverMessage(response.status), response.status, serverFieldMessages(data?.errors))
     }
     if (method === 'DELETE') {
       if (response.status !== 204) throw new Error('Unexpected deletion response')
@@ -33,6 +37,7 @@ export async function artworkRequest(path, payload, options = {}) {
     if (!saving && path.split('?')[0] === '/api/artworks/random' && data === null) return null
     const validArtwork = (item) => item && Number.isInteger(item.id) && item.id > 0 &&
       ['title', 'content', 'category', 'author', 'created_at', 'updated_at'].every((key) => typeof item[key] === 'string') &&
+      ['created_at', 'updated_at'].every((key) => Number.isFinite(Date.parse(item[key]))) &&
       ['refined_description', 'image_url', 'image_style'].every((key) => item[key] == null || typeof item[key] === 'string') &&
       (item.image_mode == null || ['generated', 'photo'].includes(item.image_mode)) &&
       (item.can_manage == null || typeof item.can_manage === 'boolean') &&

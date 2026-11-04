@@ -78,7 +78,7 @@ test('exhibition renders framed image separately from ordered information, prese
     assert.match(legacy, /museum-antique-gold-frame\.png/)
     assert.match(legacy, /exhibition-quote/)
     assert.match(legacy, /텍스트 작품/)
-    assert.match(legacy, /원문 핑계를 바탕으로 한 임시 설명/)
+    assert.match(legacy, /원문 핑계를 바탕으로 전시합니다/)
     assert.ok(legacy.includes(artwork.content))
     assert.doesNotMatch(legacy, /class="exhibition-image"|<blockquote/)
     assert.ok(legacy.indexOf('<figure') < legacy.indexOf('class="detail-label"'))

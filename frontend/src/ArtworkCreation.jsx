@@ -77,7 +77,7 @@ export default function ArtworkCreation({ mode, onModeChange, painting, curatorB
             <span className="creation-card-index" aria-hidden="true">01 / TEXT</span><strong>텍스트 작품</strong><span>이미지 없이 글 그대로 전시</span><small>기존 텍스트 기증 방식</small>
           </label>
           <label className="creation-method-card">
-            <input type="radio" name="creation_mode" value="photo" checked={mode === 'photo'} onChange={() => onModeChange('photo')} aria-controls={mode === 'photo' ? 'photo-creation-options' : undefined} />
+            <input type="radio" name="creation_mode" value="photo" checked={mode === 'photo'} onChange={() => onModeChange('photo')} aria-controls={mode === 'photo' ? 'donation-photo-section' : undefined} />
             <span className="creation-card-index" aria-hidden="true">02 / PHOTOGRAPH</span><strong>사진 작품</strong><span>원본 사진 전시</span><small>사진 선택 → 확인 → 원본 기증</small>
           </label>
           <label className="creation-method-card">

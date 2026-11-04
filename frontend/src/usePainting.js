@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { createRequestId, getVisitorId } from './visitor.js'
 import { requestPainting } from './paintingApi.js'
+import { userMessage } from './artworkApi.js'
 import { initialPaintingState, paintingInput, paintingInputError, paintingReady, paintingReducer } from './paintingState.js'
 
 export default function usePainting(values, curator) {
@@ -29,7 +30,7 @@ export default function usePainting(values, curator) {
       const result = await requestPainting({ ...input, visitor_id: getVisitorId(), request_id: createRequestId() })
       if (mounted.current) dispatch({ type: 'success', result, snapshot: fingerprint })
     } catch (error) {
-      if (mounted.current) dispatch({ type: 'error', message: error.message })
+      if (mounted.current) dispatch({ type: 'error', message: userMessage(error, '이미지 결과를 확인하지 못했습니다. 입력은 유지됩니다. 자동 재시도하지 않습니다.') })
     } finally { busy.current = false }
   }
   return { state, input, style, setStyle, generate, dispatch,

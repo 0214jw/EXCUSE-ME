@@ -60,7 +60,7 @@ test('image API has one explicit request, bounded timeout, structured preview an
     for (const [status, message] of [[503, '이미지 생성 꺼짐'], [429, '횟수 제한'], [409, '중복 요청'], [504, '시간 초과']]) {
       calls = 0
       globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ detail: message }), { status }) }
-      await assert.rejects(requestPainting(input), (error) => error.status === status && error.message === message)
+      await assert.rejects(requestPainting(input), (error) => error.status === status && /자동 재시도하지 않습니다/.test(error.message) && !error.message.includes(message))
       assert.equal(calls, 1)
     }
     globalThis.fetch = async () => new Response(JSON.stringify({ ...result, preview_data_url: 'https://untrusted.test/picture' }))

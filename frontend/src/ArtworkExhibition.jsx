@@ -21,7 +21,7 @@ export default function ArtworkExhibition({ artwork, actions = null, recognition
         <section className="detail-description" aria-labelledby="description-title">
           <h2 id="description-title">작품 설명</h2>
           <p className="detail-description-text">{description.text}</p>
-          {description.temporary && <p className="detail-description-note">원문 핑계를 바탕으로 한 임시 설명입니다.</p>}
+          {description.temporary && <p className="detail-description-note">원문 핑계를 바탕으로 전시합니다.</p>}
         </section>
         <details className="detail-original"><summary>원문 핑계 확인하기</summary><p>{artwork.content}</p></details>
         <dl>

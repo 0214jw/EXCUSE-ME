@@ -68,10 +68,10 @@ export default function App() {
       {page}
       <footer className="site-footer">
         <div className="page-width footer-top"><Brand /><p>모든 변명에는, 나름의 사정이 있다.</p><a className="health-link" href="/health" aria-current={path === '/health' ? 'page' : undefined}>서버 연결 확인 ↗</a></div>
-        <div className="page-width footer-bottom"><span>EXCUSE ME! · ABSURD ART MUSEUM</span><span>회원가입 없는 데모 · 기증한 텍스트 작품은 저장·공개됩니다.</span></div>
+        <div className="page-width footer-bottom"><span>EXCUSE ME! · ABSURD ART MUSEUM</span><span>회원가입 없는 데모 · 기증한 글과 사진은 저장·공개됩니다.</span></div>
       </footer>
       <dialog ref={dialogRef} className="museum-dialog" aria-labelledby="notice-title" aria-describedby="notice-message">
-        <p className="eyebrow">COMING SOON</p>
+        <p className="eyebrow">예시 전시 안내</p>
         <h2 id="notice-title">{notice.title}</h2>
         <p id="notice-message">{notice.message}</p>
         <form method="dialog"><button className="museum-button primary" autoFocus>확인</button></form>

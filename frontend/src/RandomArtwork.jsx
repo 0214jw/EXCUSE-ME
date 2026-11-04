@@ -9,7 +9,7 @@ export function RandomExhibition({ resource, onNext }) {
   if (resource.status === 'loading' && !artwork) return <div className="collection-notice" role="status">오늘의 인연이 될 작품을 찾고 있습니다…</div>
   return <>
     {resource.status === 'error' && <div className="collection-notice error-notice" role="alert">
-      <p>새 작품을 불러오지 못했습니다. {resource.error.message}</p>
+      <p>새 작품을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
       {artwork && <p>앞서 만난 작품을 그대로 전시하고 있습니다.</p>}
       <button className="text-link" type="button" disabled={resource.pending} onClick={onNext}>다시 시도하기 ↗</button>
       <a className="text-link" href="/gallery">상설 전시관 ↗</a>
@@ -30,14 +30,14 @@ export function RandomExhibition({ resource, onNext }) {
         <section className="detail-description" aria-labelledby="random-description-title">
           <h3 id="random-description-title">작품 설명</h3>
           <p className="detail-description-text">{artworkDescription(artwork).text}</p>
-          {artworkDescription(artwork).temporary && <p className="detail-description-note">원문 핑계를 바탕으로 한 임시 설명입니다.</p>}
+          {artworkDescription(artwork).temporary && <p className="detail-description-note">원문 핑계를 바탕으로 전시합니다.</p>}
         </section>
         <dl>
           <div><dt>카테고리</dt><dd>{artwork.category}</dd></div>
           <div><dt>좋아요</dt><dd>{artwork.recognition_count ?? '—'}</dd></div>
         </dl>
         <div className="random-actions">
-          <button className="museum-button primary" type="button" disabled={resource.pending} onClick={onNext}>
+          <button className="museum-button primary" type="button" disabled={resource.pending} aria-busy={resource.pending} onClick={onNext}>
             {resource.pending ? '작품을 만나는 중…' : '다른 작품 만나기'}</button>
           <a className="museum-button secondary" href={`/artworks/${artwork.id}`}>작품 자세히 보기 ↗</a>
         </div>

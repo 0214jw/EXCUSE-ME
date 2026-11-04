@@ -161,6 +161,7 @@ test('hall renders only real ranked records with shared frame, TOP3, image/text 
     const error = render({ status: 'error', error: new Error('연결 오류'), reload: () => {} })
     assert.match(error, /role="alert"/)
     assert.match(error, /다시 불러오기/)
-    assert.match(error, /연결 오류/)
+    assert.match(error, /명예의 전당을 불러오지 못했습니다/)
+    assert.doesNotMatch(error, /연결 오류/)
   } finally { await server.close() }
 })

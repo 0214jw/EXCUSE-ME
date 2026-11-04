@@ -24,7 +24,7 @@ test('API client separates empty results, 404, validation errors and unreadable 
   t.mock.method(globalThis, 'fetch', async () => jsonResponse({ detail: '작품 없음' }, 404))
   await assert.rejects(artworkRequest('/api/artworks/999'), (error) => error instanceof ApiError && error.status === 404)
   globalThis.fetch = async () => jsonResponse({ detail: '입력 확인', errors: { title: '제목 오류' } }, 422)
-  await assert.rejects(artworkRequest('/api/artworks', {}), (error) => error.fields.title === '제목 오류')
+  await assert.rejects(artworkRequest('/api/artworks', {}), (error) => error.fields.title === '작품명은 2~50자로 입력해 주세요.')
   for (const data of [{}, artwork, [null], [{ id: 1 }]]) {
     globalThis.fetch = async () => jsonResponse(data)
     await assert.rejects(artworkRequest('/api/artworks'), /불러오지 못했습니다/)

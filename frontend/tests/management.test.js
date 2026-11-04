@@ -109,7 +109,7 @@ test('mutation validation, missing/foreign works and uncertain network outcomes 
   const values = artworkEditValues(artwork)
   const before = structuredClone(values)
   t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ detail: '입력 오류', errors: { title: '작품명 확인' } }), { status: 422 }))
-  await assert.rejects(artworkRequest('/api/artworks/42', {}, { method: 'PUT' }), (e) => e instanceof ApiError && e.fields.title === '작품명 확인')
+  await assert.rejects(artworkRequest('/api/artworks/42', {}, { method: 'PUT' }), (e) => e instanceof ApiError && e.fields.title === '작품명은 2~50자로 입력해 주세요.')
   for (const status of [403, 404]) {
     globalThis.fetch = async () => new Response(JSON.stringify({ detail: '수정할 수 없습니다.' }), { status })
     await assert.rejects(artworkRequest('/api/artworks/42', {}, { method: 'PUT' }), (e) => e.status === status)

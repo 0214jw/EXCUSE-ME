@@ -14,7 +14,7 @@ export function usePhotoSelection() {
       const local = createPhotoPreview(file)
       setPreview(local)
       return () => local.dispose()
-    } catch (failure) { setPreview(null); setError(failure.message) }
+    } catch { setPreview(null); setError('사진 미리보기를 만들지 못했습니다. 사진을 다시 선택해 주세요.') }
   }, [file, selection])
   const current = preview?.file === file ? preview : null
   return {
@@ -31,20 +31,21 @@ export function usePhotoSelection() {
 
 export default function PhotoSelection({ photo, id = 'donation-photo', existingUrl = null }) {
   const [savedFailed, setSavedFailed] = useState(false)
-  return <section className="creation-options photo-receipt" aria-label="사진 작품 접수">
+  return <section id={`${id}-section`} className="creation-options photo-receipt" aria-label="사진 작품 접수">
     <p className="creation-option-heading">원본 사진 전시 <span className="creation-badge">PHOTOGRAPH</span></p>
     <label className="photo-file-label" htmlFor={id}>{existingUrl ? '새 사진 선택 (선택 사항)' : '기증할 사진 선택'}</label>
     <input id={id} className="photo-file-input" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
       onChange={(event) => { const selected = event.target.files?.[0]; if (selected) photo.select(selected); event.target.value = '' }}
-      aria-describedby={`${id}-help ${id}-error`} />
+      aria-invalid={Boolean(photo.error)} aria-describedby={`${id}-help ${id}-error`} />
     <p id={`${id}-help`} className="creation-help">JPG / JPEG, PNG, WEBP · 최대 5MB · 원본 사진만 저장합니다. 사진은 AI에 전송하지 않습니다.</p>
     {photo.file && <div className="selected-photo"><span>{photo.file.name}</span><button type="button" className="text-link" onClick={photo.clear}>사진 선택 취소</button></div>}
     <p id={`${id}-error`} className="field-error" role={photo.error ? 'alert' : undefined}>{photo.error}</p>
+    {photo.file && !photo.ready && !photo.error && <p className="creation-help" role="status">사진 미리보기를 불러오는 중입니다…</p>}
     {(photo.url || (existingUrl && !savedFailed)) && <figure className="creation-preview">
-      <div className="creation-preview-frame"><img src={photo.url || existingUrl}
+      <div className="creation-preview-frame">{photo.url && photo.error ? <div className="creation-preview-empty"><p>사진을 표시할 수 없습니다. 다른 사진을 선택해 주세요.</p></div> : <img src={photo.url || existingUrl}
         alt={photo.url ? '기증할 원본 사진 미리보기' : '현재 저장된 작품 사진'}
         onLoad={() => { if (photo.url) photo.loaded() }}
-        onError={() => { if (photo.url) photo.failed(); else setSavedFailed(true) }} /></div>
+        onError={() => { if (photo.url) photo.failed(); else setSavedFailed(true) }} />}</div>
       <figcaption>{photo.url ? '선택한 원본 사진 · 저장 버튼을 눌러야 업로드됩니다.' : '기존 사진 · 새 사진을 선택하지 않으면 유지됩니다.'}</figcaption>
     </figure>}
     {!photo.url && savedFailed && <p className="creation-help">기존 사진을 불러오지 못했습니다. 사진을 새로 선택하지 않아도 기존 이미지 연결은 유지됩니다.</p>}

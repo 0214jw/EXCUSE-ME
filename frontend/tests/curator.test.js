@@ -72,7 +72,7 @@ test('missing key, rate limits, duplicate, API errors and timeouts do not auto-r
   for (const status of [409, 429, 502, 504]) {
     let calls = 0
     globalThis.fetch = async () => { calls += 1; return new Response(JSON.stringify({ detail: '요청 실패 안내' }), { status }) }
-    await assert.rejects(requestCurator({}), /요청 실패 안내/)
+    await assert.rejects(requestCurator({}), (error) => error.status === status && /자동 재시도하지 않습니다/.test(error.message) && !error.message.includes('요청 실패 안내'))
     assert.equal(calls, 1)
   }
   globalThis.fetch = async () => { throw new DOMException('Timeout', 'TimeoutError') }
