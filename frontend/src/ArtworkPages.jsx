@@ -13,13 +13,14 @@ import { curatorDonationFields } from './curatorState.js'
 import usePainting from './usePainting.js'
 import { paintingDonationFields } from './paintingState.js'
 import ArtworkVisual from './ArtworkVisual.jsx'
+import { ArtworkOwnerActions } from './ArtworkManagement.jsx'
 
 const filters = ['전체', ...artworkCategories]
 const formatDate = (date) => new Intl.DateTimeFormat('ko-KR', {
   dateStyle: 'long', timeStyle: 'short', timeZone: 'Asia/Seoul',
 }).format(new Date(date))
 
-function ResourceNotice({ resource }) {
+export function ResourceNotice({ resource }) {
   if (resource.status === 'loading') return <div className="collection-notice" role="status">작품을 전시실로 모셔오는 중입니다…</div>
   if (resource.status !== 'error') return null
   return (
@@ -178,7 +179,7 @@ export function ArtworkDetailPage({ id }) {
     <main id="main-content" className="page-width detail-page">
       <a className="text-link" href="/gallery">← 상설 전시관</a>
       <ResourceNotice resource={resource} />
-      {resource.status === 'success' && <ArtworkExhibition artwork={artwork} />}
+      {resource.status === 'success' && <ArtworkExhibition artwork={artwork} actions={<ArtworkOwnerActions artwork={artwork} visitorId={resource.visitorId} />} />}
     </main>
   )
 }

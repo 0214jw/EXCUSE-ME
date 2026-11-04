@@ -1,7 +1,9 @@
 """Real HTTP application flow with explicitly mocked OpenAI transport and a temp DB."""
 from pathlib import Path
+from contextlib import closing
 import os
 import socket
+import sqlite3
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -22,7 +24,12 @@ class CuratorHttpFlowTests(unittest.TestCase):
             sock.bind(('127.0.0.1', 0))
             cls.port = sock.getsockname()[1]
         cls.base = f'http://127.0.0.1:{cls.port}'
-        with patch.dict(os.environ, {'PYTHONPATH': str(test_api.BACKEND / 'tests')}):
+        cls.start_server()
+
+    @classmethod
+    def start_server(cls):
+        with patch.dict(os.environ, {'PYTHONPATH': str(test_api.BACKEND / 'tests'),
+                                     'OPENAI_IMAGE_ENABLED': '0', 'OPENAI_API_KEY': ''}):
             test_api.ArtworkApiTests.start_server.__func__(cls)
 
     stop_server = classmethod(test_api.ArtworkApiTests.stop_server.__func__)
@@ -60,6 +67,52 @@ class CuratorHttpFlowTests(unittest.TestCase):
         self.assertEqual(self.request('/api/curator', input_data)[0], 409)
         self.assertEqual(self.request('/api/curator', {**input_data, 'category': '과제'})[0], 422)
         self.assertEqual(self.request('/api/artworks')[1], before)
+
+    def test_confirmed_description_survives_registration_title_edit_description_edit_and_restart(self):
+        source = self.payload()
+        curator_input = {key: value for key, value in source.items() if key != 'author'}
+        status, recommendation, _ = self.request('/api/curator', curator_input)
+        self.assertEqual(status, 200)
+        description = recommendation['refined_description']
+        donation = {**source, 'title': recommendation['titles'][0],
+                    'refined_description': description, 'description_confirmed': True}
+        status, created, _ = self.request('/api/artworks', donation)
+        self.assertEqual(status, 201)
+        url = f"/api/artworks/{created['id']}"
+        self.assertEqual(self.request(url)[1]['refined_description'], description)
+        with closing(sqlite3.connect(self.db_path)) as db:
+            self.assertEqual(db.execute('SELECT content,refined_description FROM artworks WHERE id=?',
+                                        (created['id'],)).fetchone(), (source['content'], description))
+        # The edit view receives the exact saved explanation from its GET.
+        loaded = self.request(url, headers={'X-Visitor-ID': source['visitor_id']})[1]
+        self.assertTrue(loaded['can_manage'])
+        self.assertEqual(loaded['refined_description'], description)
+        edit = {key: loaded[key] for key in ('title', 'content', 'category', 'author')}
+        edit.update(visitor_id=source['visitor_id'], title='제목만 바꾼 작품')
+        # Omitting the explanation in PUT must preserve the existing value.
+        status, updated, _ = self.request(url, edit, method='PUT')
+        self.assertEqual(status, 200)
+        self.assertEqual(updated['refined_description'], description)
+        changed_description = description + ' 기증자가 확인하고 다듬은 문장입니다.'
+        status, updated, _ = self.request(url, {**edit, 'refined_description': changed_description}, method='PUT')
+        self.assertEqual(status, 200)
+        self.assertEqual(updated['refined_description'], changed_description)
+        self.assertEqual(updated['content'], source['content'])
+        self.stop_server()
+        self.start_server()
+        refreshed = self.request(url)[1]
+        self.assertEqual(refreshed['refined_description'], changed_description)
+        self.assertEqual(refreshed['content'], source['content'])
+        self.assertEqual(refreshed['created_at'], created['created_at'])
+        legacy_source = self.payload()
+        status, legacy, _ = self.request('/api/artworks', legacy_source)
+        self.assertEqual(status, 201)
+        self.assertIsNone(legacy['refined_description'])
+        legacy_edit = {key: legacy_source[key] for key in ('title', 'content', 'category', 'author', 'visitor_id')}
+        self.assertEqual(self.request(f"/api/artworks/{legacy['id']}", legacy_edit, method='PUT')[0], 200)
+        self.assertIsNone(self.request(f"/api/artworks/{legacy['id']}")[1]['refined_description'])
+        self.assertEqual(self.request('/api/artworks', {**self.payload(), 'refined_description': description,
+                                                       'description_confirmed': False})[0], 422)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,14 @@
 const visitorKey = 'excuse-me.visitor-id'
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+// Read without creating or replacing an ID while deciding which controls to show.
+export function readVisitorId() {
+  try {
+    const id = localStorage.getItem(visitorKey)
+    return id && uuidPattern.test(id) ? id.toLowerCase() : null
+  } catch { return null }
+}
+
 export function createRequestId() {
   return crypto.randomUUID()
 }

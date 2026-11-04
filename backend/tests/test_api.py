@@ -207,8 +207,9 @@ class ArtworkApiTests(unittest.TestCase):
         })
         self.assertEqual(status, 400)
         self.assertIsNone(headers.get("Access-Control-Allow-Origin"))
-        for method in ("PATCH", "DELETE", "PUT"):
-            self.assertEqual(self.request("/api/artworks/1", method=method)[0], 405)
+        self.assertEqual(self.request("/api/artworks/1", method="PATCH")[0], 405)
+        for method in ("DELETE", "PUT"):
+            self.assertEqual(self.request("/api/artworks/1", method=method)[0], 422)
 
     def test_latest_first(self):
         first = self.request("/api/artworks", self.payload())[1]

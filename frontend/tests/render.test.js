@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer } from 'vite'
 
 test('real React pages render donation links, form, separate samples and preserved sculpture hero', async () => {
-  const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
+  const server = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom' })
   const previousWindow = globalThis.window
   try {
     const { default: App } = await server.ssrLoadModule('/src/App.jsx')
@@ -47,6 +47,7 @@ test('real React pages render donation links, form, separate samples and preserv
     assert.doesNotMatch(gallery, /class="artwork-frame/)
     assert.match(home, /class="artwork-frame/)
     assert.match(render('/artworks/1'), /모셔오는 중/)
+    assert.match(render('/artworks/1/edit'), /내 작품 수정하기/)
     assert.match(render('/health'), /서버 연결 확인/)
     assert.match(render('/hall-of-fame'), /명예의 전당은 준비 중/)
   } finally {
@@ -57,7 +58,7 @@ test('real React pages render donation links, form, separate samples and preserv
 })
 
 test('exhibition renders framed image separately from ordered information, preserving legacy text works', async () => {
-  const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
+  const server = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom' })
   try {
     const { default: Exhibition } = await server.ssrLoadModule('/src/ArtworkExhibition.jsx')
     const artwork = { id: 42, title: '이불의 중력', author: '익명의 예술가', content: '이불의 중력이 너무 강해 오늘도 늦었습니다.', category: '지각·조퇴', created_at: '2026-11-02T00:00:00Z' }
@@ -90,7 +91,7 @@ test('exhibition renders framed image separately from ordered information, prese
 })
 
 test('saved representative images and legacy text use the same gallery/detail frame without API calls', async () => {
-  const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
+  const server = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom' })
   const originalFetch = globalThis.fetch
   let calls = 0
   globalThis.fetch = async () => { calls++; throw new Error('Viewing must not call generation APIs') }
@@ -136,7 +137,7 @@ test('saved representative images and legacy text use the same gallery/detail fr
 })
 
 test('curator preview shows editable suggestions, explicit confirmation, stale warning and a usable manual title field', async () => {
-  const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
+  const server = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom' })
   try {
     const { CuratorSuggestions, CuratorDescription } = await server.ssrLoadModule('/src/CuratorPanel.jsx')
     const state = { status: 'success', titles: ['중력의 미학', '기상 유예', '이불 속 전시'], description: '작품의 설명입니다. 원문은 보존됩니다.', confirmed: false, snapshot: { content: '이전의 원문 핑계입니다.', category: '약속' }, error: '' }
@@ -161,7 +162,7 @@ test('curator preview shows editable suggestions, explicit confirmation, stale w
 })
 
 test('creation cards preserve local-only photos and expose explicit paid painting generation', async () => {
-  const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
+  const server = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom' })
   try {
     const { default: ArtworkCreation, CreationPreview, StyleChoices } = await server.ssrLoadModule('/src/ArtworkCreation.jsx')
     const painting = { state: { status: 'idle', result: null, error: '' }, style: 'watercolor', ready: false, setStyle() {}, generate() {}, dispatch() {} }
@@ -199,7 +200,7 @@ test('creation cards preserve local-only photos and expose explicit paid paintin
 })
 
 test('generated preview, review confirmation, stale state and detail/gallery media URLs render', async () => {
-  const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
+  const server = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom' })
   try {
     const { GeneratedCreation } = await server.ssrLoadModule('/src/ArtworkCreation.jsx')
     const { LiveArtworkCard } = await server.ssrLoadModule('/src/ArtworkPages.jsx')

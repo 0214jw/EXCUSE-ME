@@ -3,6 +3,7 @@ import HealthCheck from './HealthCheck.jsx'
 import { HomePage } from './MuseumPages.jsx'
 import { ArtworkDetailPage, GalleryPage, SubmitPage } from './ArtworkPages.jsx'
 import { getVisitorId } from './visitor.js'
+import ArtworkEditPage from './ArtworkEditPage.jsx'
 
 const notices = {
   detail: { title: '디자인 확인용 예시 작품입니다.', message: '이 작품과 작가명·명작 인정 수는 가상이며 DB에 저장된 작품이 아닙니다. 실제 기증 작품은 상설 전시관 위쪽에서 감상할 수 있습니다.' },
@@ -33,6 +34,7 @@ export default function App() {
   else if (path === '/gallery') page = <GalleryPage onUnavailable={onUnavailable} />
   else if (path === '/health') page = <HealthCheck />
   else if (path === '/submit') page = <SubmitPage />
+  else if (/^\/artworks\/[^/]+\/edit$/.test(path)) page = <ArtworkEditPage id={path.split('/')[2]} />
   else if (/^\/artworks\/[^/]+$/.test(path)) page = <ArtworkDetailPage id={path.split('/')[2]} />
   else {
     const futurePage = path === '/hall-of-fame' ? notices.hall : null
