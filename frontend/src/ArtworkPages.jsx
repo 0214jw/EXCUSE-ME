@@ -13,6 +13,7 @@ import { curatorDonationFields } from './curatorState.js'
 import usePainting from './usePainting.js'
 import { paintingDonationFields } from './paintingState.js'
 import ArtworkVisual from './ArtworkVisual.jsx'
+import './ArtworkCard.css'
 import { ArtworkOwnerActions } from './ArtworkManagement.jsx'
 import ArtworkRecognition from './ArtworkRecognition.jsx'
 import { usePhotoSelection } from './PhotoSelection.jsx'
@@ -36,18 +37,23 @@ export function ResourceNotice({ resource }) {
 }
 
 export function LiveArtworkCard({ artwork, rank = null }) {
+  const special = rank !== null && rank <= 3
   return (
     <article className={`artwork-card${rank ? ` award-card${rank <= 3 ? ' award-card--laureate' : ''}` : ''}`} aria-labelledby={`collection-${artwork.id}`}>
       <a className="artwork-open" href={`/artworks/${artwork.id}`} aria-label={`${artwork.title} 감상하기`}>
-        {rank && <span className="award-rank"><strong>{rank}위</strong><span>{rank <= 3 ? '관람객 선정 · TOP 3' : 'HALL OF FAME'}</span></span>}
-        <ArtworkVisual artwork={artwork} />
-        <span className="artwork-label">
+        {rank && <span className="award-rank"><strong>{rank}위</strong>{rank > 3 && <span>HALL OF FAME</span>}</span>}
+        <ArtworkVisual artwork={artwork} framed={special} presentation={special ? 'default' : 'gallery'} />
+        {!special ? <span className="artwork-label artwork-label--minimal">
+          <span id={`collection-${artwork.id}`} role="heading" aria-level="2" className="artwork-title">{artwork.title}</span>
+          <span className="artwork-author">작가 · {artwork.author}</span>
+          <span className="artwork-metadata"><span>{artwork.category}</span><span className="artwork-like-count"><span aria-hidden="true">♡</span> <span className="recognition-sr-only">좋아요 </span>{artwork.recognition_count ?? '—'}</span></span>
+        </span> : <span className="artwork-label">
           <span className="artwork-label-top"><span>작품 № {String(artwork.id).padStart(3, '0')}</span><span>{artwork.category}</span></span>
           <span id={`collection-${artwork.id}`} role="heading" aria-level="2" className="artwork-title">{artwork.title}<span aria-hidden="true">↗</span></span>
           <span className="artwork-excerpt">{artwork.content}</span>
           <span className="artwork-author">작가 · {artwork.author}</span>
           <span className="artwork-label-bottom"><time dateTime={artwork.created_at}>{formatDate(artwork.created_at)}</time><span className="artwork-like-count"><span aria-hidden="true">♡</span> <span className="recognition-sr-only">좋아요 </span>{artwork.recognition_count ?? '—'}</span><span>감상하기 ↗</span></span>
-        </span>
+        </span>}
       </a>
     </article>
   )

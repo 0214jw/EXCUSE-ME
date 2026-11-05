@@ -14,21 +14,40 @@ test('real React pages render donation links, form, separate samples and preserv
       return renderToStaticMarkup(React.createElement(App))
     }
     const home = render('/')
+    assert.match(home, /<header[^>]*class="site-header site-header--landing site-header--dark"[^>]*data-theme="dark"/)
+    assert.match(home, /<svg class="brand-symbol"[^>]*stroke="currentColor"/)
+    const navigation = home.match(/<nav[^>]*>[\s\S]*?<\/nav>/)[0]
+    assert.equal((navigation.match(/<a /g) || []).length, 3)
+    for (const href of ['/', '/gallery', '/hall-of-fame']) assert.ok(navigation.includes(`href="${href}"`))
+    for (const path of ['/gallery', '/artworks/1', '/submit', '/artworks/1/edit', '/hall-of-fame']) {
+      const page = render(path)
+      assert.match(page, /<header[^>]*class="site-header"[^>]*data-theme="light"/)
+      assert.doesNotMatch(page, /site-header--dark|site-header--landing/)
+      assert.doesNotMatch(page, /href="\/random"|운명의 작품 만나기/)
+    }
     assert.match(home, /그럴듯한 사유/)
     assert.match(home, /the-birth-of-an-excuse-cutout/)
     assert.match(home, /class="poster-object"/)
     assert.match(home, /class="poster-slogan"/)
     assert.doesNotMatch(home, /excuse-me-hero\.png/)
-    const hero = home.slice(home.indexOf('<section class="poster-hero'), home.indexOf('<section class="museum-intro'))
-    assert.equal((hero.match(/<img /g) || []).length, 5) // four decorative frames + unchanged sculpture
-    assert.equal((hero.match(/class="poster-frame-overlay"/g) || []).length, 4)
-    assert.equal((hero.match(/class="poster-frame-stage"/g) || []).length, 4)
-    assert.doesNotMatch(hero, /poster-frame-mat/)
-    assert.match(hero, /museum-antique-gold-frame\.png/)
+    const main = home.slice(home.indexOf('<main'), home.indexOf('</main>') + '</main>'.length)
+    const hero = main.slice(main.indexOf('<section class="poster-hero'), main.lastIndexOf('</main>'))
+    assert.equal((hero.match(/<img /g) || []).length, 1) // unchanged sculpture; editable CSS studies
+    assert.equal((hero.match(/class="poster-study poster-study-/g) || []).length, 2)
+    assert.doesNotMatch(hero, /poster-frame-overlay|poster-frame-mat|museum-antique-gold-frame\.png/)
+    assert.match(home, /<main id="main-content" class="landing-page"/)
+    assert.match(home, /<p class="brand-intro-copy">그럴듯한 사정들을 수집합니다\.<\/p>/)
+    assert.equal((main.match(/<section\b/g) || []).length, 2)
+    assert.match(main, /^<main[^>]*><section class="brand-intro"/)
+    assert.match(main, /<\/section><section class="poster-hero/)
+    assert.match(home, /<\/section><\/main><footer class="site-footer">/)
+    assert.doesNotMatch(main, /museum-intro|preview-section|preview-grid|preview-title|collection-subtitle|donation-note|sample-notice|artwork-card|data-frame=/)
     assert.match(hero, /href="\/gallery">전시 관람하기/)
     assert.match(hero, /href="\/submit">작품 기증하기/)
     assert.doesNotMatch(hero, /<a[^>]*>\s*<img/)
-    assert.ok((home.match(/href="\/submit"/g) || []).length >= 3)
+    assert.equal((hero.match(/href="\/gallery"/g) || []).length, 1)
+    assert.equal((hero.match(/href="\/submit"/g) || []).length, 1)
+    assert.equal((home.match(/href="\/submit"/g) || []).length, 2) // header + existing Hero CTA
     const submit = render('/submit')
     for (const name of ['title', 'content', 'category', 'author']) assert.ok(submit.includes(`name="${name}"`))
     for (const category of ['지각·조퇴', '휴가·병가', '약속', '운동', '기타']) assert.ok(submit.includes(`<option value="${category}">`))
@@ -36,30 +55,35 @@ test('real React pages render donation links, form, separate samples and preserv
     assert.doesNotMatch(submit, /type="file"/)
     assert.match(submit, /실제 인증 수단은 아닙니다/)
     const gallery = render('/gallery')
+    assert.match(gallery, /<h1 id="gallery-title">상설 전시관/)
     assert.match(gallery, /기증 작품 카테고리/)
     assert.match(gallery, /<details class="sample-collection">/)
     assert.match(gallery, /가상 작품 8점/)
     assert.equal((gallery.match(/<article /g) || []).length, 8) // all eight are inside the separate samples
-    assert.equal((gallery.match(/data-frame="antique-gold"/g) || []).length, 8)
-    assert.equal((gallery.match(/class="exhibition-frame-overlay"/g) || []).length, 8)
-    assert.match(gallery, /museum-antique-gold-frame\.png/)
+    assert.equal((gallery.match(/data-frame="none"/g) || []).length, 8)
+    assert.equal((gallery.match(/class="exhibition-frame-overlay"/g) || []).length, 0)
+    assert.doesNotMatch(gallery, /museum-antique-gold-frame\.png/)
     assert.doesNotMatch(gallery, /walnut|exhibition-mat/)
     assert.doesNotMatch(gallery, /class="artwork-frame/)
-    assert.match(home, /class="artwork-frame/)
+    assert.doesNotMatch(home, /class="artwork-frame|exhibition-frame-overlay/)
+    assert.equal((home.match(/data-frame="none"/g) || []).length, 0)
     assert.match(render('/artworks/1'), /모셔오는 중/)
     assert.match(render('/artworks/1/edit'), /내 작품 수정하기/)
     assert.match(render('/health'), /서버 연결 확인/)
     const hall = render('/hall-of-fame')
     assert.match(hall, /id="hall-title"/)
+    assert.match(hall, /가장 많은 사람이 속아준 핑계 · 이번 달의 TOP 10/)
     assert.match(hall, /명예의 전당 소장품을 불러오는 중/)
     assert.match(home, /href="\/hall-of-fame"/)
     assert.match(gallery, /option value="popular"/)
-    const random = render('/random')
-    assert.match(home, /href="\/random"/)
-    assert.match(random, /href="\/random" aria-current="page"/)
-    assert.match(random, /id="random-title">운명의 작품 만나기/)
-    assert.match(random, /오늘의 인연이 될 작품을 찾고 있습니다/)
-    assert.doesNotMatch(random, /sample-collection|poster-hero|brand-intro/)
+    assert.doesNotMatch(home, /href="\/random"|운명의 작품 만나기/)
+    for (const path of ['/random', '/random/', '/artworks/random', '/artworks/random/edit']) {
+      const retired = render(path)
+      assert.match(retired, /전시실을 찾을 수 없습니다/)
+      assert.match(retired, /href="\/gallery">전시관으로 돌아가기/)
+      assert.match(retired, /class="site-footer"/)
+      assert.doesNotMatch(retired, /href="\/random"|운명의 작품 만나기|random-page|random-title|모셔오는 중/)
+    }
   } finally {
     if (previousWindow === undefined) delete globalThis.window
     else globalThis.window = previousWindow
@@ -67,15 +91,18 @@ test('real React pages render donation links, form, separate samples and preserv
   }
 })
 
-test('exhibition renders framed image separately from ordered information, preserving legacy text works', async () => {
+test('exhibition renders frameless image separately from ordered information, preserving legacy text works', async () => {
   const server = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom' })
   try {
     const { default: Exhibition } = await server.ssrLoadModule('/src/ArtworkExhibition.jsx')
     const artwork = { id: 42, title: '이불의 중력', author: '익명의 예술가', content: '이불의 중력이 너무 강해 오늘도 늦었습니다.', category: '지각·조퇴', created_at: '2026-11-02T00:00:00Z' }
     const legacy = renderToStaticMarkup(React.createElement(Exhibition, { artwork }))
     assert.match(legacy, /exhibition-visual--large/)
-    assert.match(legacy, /exhibition-frame-overlay/)
-    assert.match(legacy, /museum-antique-gold-frame\.png/)
+    assert.match(legacy, /exhibition-visual--gallery/)
+    assert.match(legacy, /exhibition-poster-edition/)
+    assert.match(legacy, /exhibition-poster-footer/)
+    assert.doesNotMatch(legacy, /exhibition-frame-overlay/)
+    assert.doesNotMatch(legacy, /museum-antique-gold-frame\.png/)
     assert.match(legacy, /exhibition-quote/)
     assert.match(legacy, /텍스트 작품/)
     assert.match(legacy, /원문 핑계를 바탕으로 전시합니다/)
@@ -89,6 +116,7 @@ test('exhibition renders framed image separately from ordered information, prese
       ...artwork, image_url: '/media/future.png', refined_description: '별도로 다듬은 작품 설명', image_mode: 'generated', image_style: 'watercolor',
     } }))
     assert.match(prepared, /<img[^>]+src="\/media\/future.png"/)
+    assert.doesNotMatch(prepared, /exhibition-visual--gallery/)
     assert.match(prepared, /alt="이불의 중력 작품 이미지"/)
     assert.match(prepared, /별도로 다듬은 작품 설명/)
     assert.doesNotMatch(prepared, /임시 설명/)
@@ -100,7 +128,7 @@ test('exhibition renders framed image separately from ordered information, prese
   }
 })
 
-test('saved representative images and legacy text use the same gallery/detail frame without API calls', async () => {
+test('saved representative images and legacy text use the same frameless gallery/detail display without API calls', async () => {
   const server = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom' })
   const originalFetch = globalThis.fetch
   let calls = 0
@@ -118,27 +146,55 @@ test('saved representative images and legacy text use the same gallery/detail fr
         const artwork = { ...base, ...media }
         const before = structuredClone(artwork)
         const html = renderToStaticMarkup(React.createElement(Component, { artwork }))
-        for (const layer of ['exhibition-stage', 'exhibition-frame-overlay', 'exhibition-surface', 'exhibition-image']) assert.ok(html.includes(layer))
-        assert.match(html, /data-frame="antique-gold"/)
-        assert.match(html, /museum-antique-gold-frame\.png/)
-        assert.ok(html.indexOf('class="exhibition-surface"') < html.indexOf('class="exhibition-frame-overlay"'))
-        assert.equal((html.match(/<img /g) || []).length, 2)
+        for (const layer of ['exhibition-stage', 'exhibition-surface', 'exhibition-image']) assert.ok(html.includes(layer))
+        assert.match(html, /data-frame="none"/)
+        assert.match(html, /data-media="image"/)
+        assert.doesNotMatch(html, /exhibition-frame-overlay|museum-antique-gold-frame\.png/)
+        assert.equal((html.match(/<img /g) || []).length, 1)
         assert.match(html, /alt="어제의 작은 사정 작품 이미지"/)
         assert.ok(html.includes(media.image_url))
         assert.doesNotMatch(html, /class="exhibition-text"/)
+        assert.equal(html.includes('exhibition-visual--gallery'), Component === LiveArtworkCard)
         assert.deepEqual(artwork, before)
       }
       for (const image_url of [undefined, null, '', 'javascript:alert(1)']) {
         const html = renderToStaticMarkup(React.createElement(Component, { artwork: { ...base, image_url } }))
-        assert.equal((html.match(/<img /g) || []).length, 1)
+        assert.equal((html.match(/<img /g) || []).length, 0)
         assert.doesNotMatch(html, /class="exhibition-image"/)
         assert.match(html, /class="exhibition-text"/)
-        assert.match(html, /data-frame="antique-gold"/)
+        assert.match(html, /data-media="text"/)
+        assert.match(html, /data-frame="none"/)
         assert.ok(html.includes(base.content))
       }
     }
     const card = renderToStaticMarkup(React.createElement(LiveArtworkCard, { artwork: base }))
     assert.match(card, /href="\/artworks\/12"/)
+    assert.match(card, /artwork-label--minimal/)
+    assert.doesNotMatch(card, /artwork-excerpt|<time|artwork-label-top|exhibition-frame-overlay/)
+    assert.ok(card.includes(base.title) && card.includes(base.author) && card.includes(base.category))
+    for (const rank of [1, 2, 3, 4, 10]) {
+      const ranked = renderToStaticMarkup(React.createElement(LiveArtworkCard, { artwork: base, rank }))
+      assert.equal(ranked.includes('exhibition-frame-overlay'), rank <= 3)
+      assert.equal(ranked.includes('artwork-label--minimal'), rank > 3)
+      assert.equal(ranked.includes('exhibition-visual--gallery'), rank > 3)
+    }
+    const content = '첫 문장은 사용자가 작성한 그대로입니다. ' + '상세에서만 볼 수 있는 원문입니다. '.repeat(15)
+    const longWork = { ...base, content }
+    const before = structuredClone(longWork)
+    const poster = renderToStaticMarkup(React.createElement(LiveArtworkCard, { artwork: longWork }))
+    assert.match(poster, /exhibition-poster-edition/)
+    assert.match(poster, /EXCUSE ME! \/ TEXT COLLECTION/)
+    assert.match(poster, /첫 문장은 사용자가 작성한 그대로입니다\./)
+    assert.doesNotMatch(poster, /상세에서만 볼 수 있는 원문/)
+    assert.match(poster, /exhibition-poster-footer/)
+    assert.match(poster, /COLLECTION № 012/)
+    assert.ok(poster.indexOf('exhibition-poster-footer') < poster.indexOf('artwork-label--minimal'))
+    const detail = renderToStaticMarkup(React.createElement(Exhibition, { artwork: longWork }))
+    assert.ok(detail.includes(content))
+    assert.match(detail, /exhibition-visual--gallery/)
+    assert.match(detail, /exhibition-poster-footer/)
+    assert.ok(detail.includes(`<details class="detail-original"><summary>원문 핑계 확인하기</summary><p>${content}</p></details>`))
+    assert.deepEqual(longWork, before)
     assert.equal(calls, 0)
   } finally {
     globalThis.fetch = originalFetch
@@ -195,7 +251,8 @@ test('creation cards support original photos separately from existing painting g
     for (const style of ['수채화', '유화', '점묘화', '연필 드로잉', '콜라주']) assert.ok(generated.includes(style))
     assert.match(generated, /작품 이미지 생성하기/)
     assert.match(generated, /별개의 유료 요청/)
-    assert.match(generated, /0.053/)
+    assert.match(generated, /768×1024 · 3:4 세로 · 1장/)
+    assert.doesNotMatch(generated, /1024×1024|0\.053/)
     assert.match(generated, /이미지가 아직 생성되지 않았습니다/)
     assert.doesNotMatch(generated, /<img /)
     const styles = renderToStaticMarkup(React.createElement(StyleChoices, { name: 'photo_style', value: 'oil', onChange() {} }))

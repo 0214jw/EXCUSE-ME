@@ -109,7 +109,7 @@ test('cleanup-pending responses inform the owner without treating a committed de
   assert.equal((await artworkRequest('/api/artworks/42', {}, { method: 'PUT' })).photo_cleanup_pending, true)
 })
 
-test('photo edit loads its existing image and description, while every exhibition reuses the photo frame', async () => {
+test('photo edit preserves its image and description; only the hall TOP3 has a photo frame', async () => {
   const server = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom' })
   try {
     const { ArtworkEditForm } = await server.ssrLoadModule('/src/ArtworkManagement.jsx')
@@ -128,12 +128,11 @@ test('photo edit loads its existing image and description, while every exhibitio
     const { LiveArtworkCard } = await server.ssrLoadModule('/src/ArtworkPages.jsx')
     const { default: Exhibition } = await server.ssrLoadModule('/src/ArtworkExhibition.jsx')
     const { HallExhibition } = await server.ssrLoadModule('/src/HallOfFame.jsx')
-    const { RandomExhibition } = await server.ssrLoadModule('/src/RandomArtwork.jsx')
     for (const element of [React.createElement(LiveArtworkCard, { artwork }), React.createElement(Exhibition, { artwork }),
-      React.createElement(HallExhibition, { resource: { status: 'success', data: [artwork] } }),
-      React.createElement(RandomExhibition, { resource: { status: 'success', data: artwork, pending: false }, onNext() {} })]) {
+      React.createElement(HallExhibition, { resource: { status: 'success', data: [artwork] } })]) {
       const html = renderToStaticMarkup(element)
-      assert.match(html, /data-frame="antique-gold"/)
+      assert.ok(html.includes(element.type === HallExhibition ? 'data-frame="antique-gold"' : 'data-frame="none"'))
+      assert.equal(html.includes('exhibition-frame-overlay'), element.type === HallExhibition)
       assert.match(html, /class="exhibition-image"/)
       assert.match(html, /\/api\/artworks\/42\/image/)
     }

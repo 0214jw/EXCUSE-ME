@@ -1,7 +1,7 @@
 import re
 import sqlite3
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from secrets import randbelow
 from typing import Annotated, Literal
 from uuid import uuid4
@@ -291,10 +291,26 @@ def list_artworks(response: Response = None, order: Literal["latest", "popular"]
     return [dict(row) for row in rows]
 
 
+# Current Korean civil time is UTC+09:00. A fixed offset avoids requiring an
+# optional IANA timezone database on Windows; stored timestamps remain UTC.
+HALL_TIMEZONE = timezone(timedelta(hours=9), "Asia/Seoul")
+
+
+def hall_month_bounds(now: datetime):
+    start = now.astimezone(HALL_TIMEZONE).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    end = start.replace(year=start.year + 1, month=1) if start.month == 12 else start.replace(month=start.month + 1)
+    # Match the existing fixed-width UTC ISO format, preserving microseconds at
+    # month boundaries instead of SQLite date functions' millisecond rounding.
+    return tuple(bound.astimezone(timezone.utc).isoformat(timespec="microseconds") for bound in (start, end))
+
+
 @app.get("/api/hall-of-fame", response_model=list[ArtworkOutput])
 def hall_of_fame(response: Response):
+    start, end = hall_month_bounds(datetime.now(timezone.utc))
     with connection() as db:
-        rows = db.execute(ARTWORK_SELECT + " ORDER BY recognition_count DESC, a.created_at ASC, a.id ASC LIMIT 10", (None,)).fetchall()
+        rows = db.execute(ARTWORK_SELECT + " WHERE a.created_at >= ? AND a.created_at < ?"
+                          " ORDER BY recognition_count DESC, a.created_at ASC, a.id ASC LIMIT 10",
+                          (None, start, end)).fetchall()
     response.headers["Cache-Control"] = "no-store"
     return [dict(row) for row in rows]
 

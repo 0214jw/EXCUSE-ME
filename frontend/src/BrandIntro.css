@@ -29,6 +29,22 @@
   white-space: nowrap;
 }
 
+.brand-intro-copy {
+  width: 100%;
+  margin: 32px 0 0;
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.8;
+  letter-spacing: .02em;
+  text-align: right;
+  word-break: keep-all;
+}
+
+@media (max-width: 600px) {
+  .brand-intro-copy { margin-top: 24px; font-size: 13px; }
+}
+
 @keyframes brand-intro-appear {
   from { opacity: 0; }
   to { opacity: 1; }

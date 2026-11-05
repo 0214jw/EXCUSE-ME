@@ -78,3 +78,36 @@ test('missing key, rate limits, duplicate, API errors and timeouts do not auto-r
   globalThis.fetch = async () => { throw new DOMException('Timeout', 'TimeoutError') }
   await assert.rejects(requestCurator({}), /자동 재시도하지 않습니다/)
 })
+
+test('curator exposes only allowlisted failure reasons, never raw provider messages, without retries', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => { throw new Error('Unexpected request') })
+  for (const [code, expected] of [
+    ['curator_not_configured', /키가 설정되어 있지/],
+    ['curator_authentication_failed', /인증에 실패/],
+    ['curator_access_denied', /접근이 거부/],
+    ['curator_model_unavailable', /모델을 찾을 수 없거나/],
+    ['curator_quota_exceeded', /잔액 또는 사용 한도/],
+    ['curator_provider_rate_limited', /일시적으로 제한/],
+    ['curator_request_rejected', /요청 설정이 거절/],
+    ['curator_network_error', /네트워크 연결/],
+    ['curator_incomplete_response', /끝까지 생성되지 않아/],
+    ['curator_invalid_response', /형식에 맞지 않아/],
+    ['curator_response_refused', /추천을 제공하지 않았/],
+    ['unknown_private_code', /지금은 AI 추천/],
+    ['__proto__', /지금은 AI 추천/],
+    [{ toString: null }, /지금은 AI 추천/],
+    [null, /지금은 AI 추천/],
+  ]) {
+    let calls = 0
+    globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ detail: { code, message: 'private SQL trace and test-only-not-a-real-key' } }), { status: 503 }) }
+    await assert.rejects(requestCurator({}), error => {
+      assert.equal(error.status, 503)
+      assert.match(error.message, expected)
+      assert.match(error.message, /추천 없이 텍스트 기증 가능/)
+      assert.match(error.message, /자동 재시도하지 않습니다/)
+      assert.doesNotMatch(error.message, /private|SQL|test-only|unknown_private/)
+      return true
+    })
+    assert.equal(calls, 1)
+  }
+})

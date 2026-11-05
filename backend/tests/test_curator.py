@@ -73,14 +73,15 @@ class CuratorTests(unittest.TestCase):
                     curator.CuratorDraft.model_validate({**DRAFT, **changes})
 
     def test_refusal_incomplete_and_malformed_responses_never_become_fake_results(self):
-        for response in [self.response(status='incomplete'), BytesIO(b'bad JSON'),
-                         self.response(output=[{'type': 'message', 'content': [{'type': 'refusal', 'refusal': 'no'}]}]),
-                         self.response(draft={**DRAFT, 'titles': ['동일 제목'] * 3})]:
+        for response, reason in [(self.response(status='incomplete'), 'incomplete_response'), (BytesIO(b'bad JSON'), 'invalid_response'),
+                         (self.response(output=[{'type': 'message', 'content': [{'type': 'refusal', 'refusal': 'no'}]}]), 'response_refused'),
+                         (self.response(draft={**DRAFT, 'titles': ['동일 제목'] * 3}), 'invalid_response')]:
             data = self.data.model_copy(update={'request_id': uuid4()})
             with patch.object(curator, 'urlopen', return_value=response) as transport:
                 with self.assertRaises(HTTPException) as error:
                     curator.generate_curator(data, '127.0.0.1')
                 self.assertEqual(error.exception.status_code, 502)
+                self.assertEqual(error.exception.detail, {'code': 'curator_' + reason})
                 transport.assert_called_once()
 
     def test_missing_key_never_calls_provider(self):
@@ -88,6 +89,7 @@ class CuratorTests(unittest.TestCase):
             with self.assertRaises(HTTPException) as error:
                 curator.generate_curator(self.data, '127.0.0.1')
             self.assertEqual(error.exception.status_code, 503)
+            self.assertEqual(error.exception.detail, {'code': 'curator_not_configured'})
             transport.assert_not_called()
 
     def test_failures_timeout_are_sanitized_without_retries_and_release_inflight(self):
@@ -100,10 +102,53 @@ class CuratorTests(unittest.TestCase):
                 with self.assertRaises(HTTPException) as error:
                     curator.generate_curator(data, '127.0.0.1')
                 self.assertEqual(error.exception.status_code, expected)
-                self.assertNotIn('private', error.exception.detail)
-                self.assertNotIn('test-only-not-a-real-key', error.exception.detail)
+                self.assertNotIn('private', json.dumps(error.exception.detail))
+                self.assertNotIn('test-only-not-a-real-key', json.dumps(error.exception.detail))
                 self.assertFalse(curator.gate.active)
                 transport.assert_called_once()
+
+    def test_provider_auth_permission_model_quota_and_outage_have_safe_distinct_codes(self):
+        cases = [(400, {}, 'request_rejected'), (401, {}, 'authentication_failed'),
+                 (403, {}, 'access_denied'), (404, {}, 'model_unavailable'),
+                 (429, {'code': 'credit_balance_exhausted'}, 'quota_exceeded'),
+                 (429, {'code': 'project_spend_limit_exceeded'}, 'quota_exceeded'),
+                 (429, {'type': 'insufficient_quota'}, 'quota_exceeded'),
+                 (429, {'code': 'rate_limit_exceeded'}, 'provider_rate_limited'),
+                 (429, {'code': {}}, 'provider_rate_limited'),
+                 (500, {}, 'provider_unavailable'), (503, {}, 'provider_unavailable')]
+        for status, metadata, reason in cases:
+            with self.subTest(status=status, reason=reason):
+                body = BytesIO(json.dumps({'error': {**metadata, 'message': 'private provider body with test-only-not-a-real-key'}}).encode())
+                failure = HTTPError(curator.OPENAI_URL, status, 'private detail', {}, body)
+                with patch.object(curator, 'gate', curator.CuratorGate()), patch.object(curator, 'urlopen', side_effect=failure) as transport:
+                    with self.assertRaises(HTTPException) as caught:
+                        curator.generate_curator(self.data, '127.0.0.1')
+                    self.assertEqual(caught.exception.status_code, 503)
+                    self.assertEqual(caught.exception.detail, {'code': 'curator_' + reason})
+                    self.assertNotIn('private', json.dumps(caught.exception.detail))
+                    self.assertTrue(body.closed)
+                    transport.assert_called_once()
+                    self.assertFalse(curator.gate.active)
+
+    def test_unreadable_or_oversized_rate_limit_errors_do_not_escape_sanitization(self):
+        for raw in [b'not JSON private body', b'x' * 9000, b'[]']:
+            failure = HTTPError(curator.OPENAI_URL, 429, 'private detail', {}, BytesIO(raw))
+            data = self.data.model_copy(update={'request_id': uuid4()})
+            with patch.object(curator, 'urlopen', side_effect=failure) as transport:
+                with self.assertRaises(HTTPException) as caught:
+                    curator.generate_curator(data, '127.0.0.1')
+                self.assertEqual(caught.exception.detail, {'code': 'curator_provider_rate_limited'})
+                transport.assert_called_once()
+
+    def test_short_valid_excuse_and_image_off_do_not_disable_text_curator(self):
+        data = self.data.model_copy(update={'content': '공룡이 갑자기 저희 집을 덮쳤어요!', 'category': '휴가·병가'})
+        with patch.dict(os.environ, {'OPENAI_IMAGE_ENABLED': '0'}), patch.object(curator, 'urlopen', return_value=self.response()) as transport:
+            result = curator.generate_curator(data, '127.0.0.1')
+        self.assertEqual(len(result.titles), 3)
+        sent = json.loads(json.loads(transport.call_args.args[0].data)['input'][1]['content'])
+        self.assertEqual(sent['original_excuse'], data.content)
+        self.assertEqual(sent['category'], '휴가·병가')
+        transport.assert_called_once()
 
     def test_repeated_request_id_does_not_trigger_second_paid_call(self):
         with patch.object(curator, 'urlopen', return_value=self.response()) as transport:

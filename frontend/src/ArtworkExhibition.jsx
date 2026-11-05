@@ -12,7 +12,7 @@ export default function ArtworkExhibition({ artwork, actions = null, recognition
   return (
     <article className="detail-exhibit" aria-labelledby="artwork-title">
       <figure className="detail-artwork">
-        <ArtworkVisual artwork={artwork} size="large" />
+        <ArtworkVisual artwork={artwork} size="large" presentation={imageUrl ? 'default' : 'gallery'} />
         <figcaption><span>COLLECTION № {String(artwork.id).padStart(3, '0')}</span><span>{imageUrl ? '작품 이미지 · 원본 비율' : '텍스트 작품 · 원문 전체는 작품 정보에서'}</span></figcaption>
       </figure>
       <div className="detail-label">

@@ -1,0 +1,11 @@
+/* Shared captions for ordinary works; award captions retain their own layout. */
+.artwork-label.artwork-label--minimal { padding-top: 20px; }
+.artwork-label--minimal .artwork-title { margin: 0; font-size: 20px; line-height: 1.5; }
+.artwork-label--minimal .artwork-author { margin-top: 8px; font-size: 12px; line-height: 1.7; color: var(--muted); }
+.artwork-metadata { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.artwork-open:hover .artwork-label--minimal .artwork-title { color: var(--wine); }
+.gallery-page:not(.hall-page) .artwork-grid { row-gap: 64px; align-items: start; }
+@media (max-width: 600px) {
+  .gallery-page:not(.hall-page) .artwork-grid { row-gap: 48px; }
+  .artwork-label.artwork-label--minimal { padding-top: 18px; }
+}

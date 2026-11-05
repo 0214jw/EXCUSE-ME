@@ -47,7 +47,7 @@ test('invalid dates become recoverable read errors rather than crashing any exhi
   for (const key of ['created_at', 'updated_at']) {
     for (const value of ['', 'not-a-date', '999999999999999999']) {
       const invalid = { ...artwork, [key]: value }
-      for (const path of ['/api/artworks', '/api/artworks/1', '/api/hall-of-fame', '/api/artworks/random']) {
+      for (const path of ['/api/artworks', '/api/artworks/1', '/api/hall-of-fame']) {
         globalThis.fetch = async () => response(['/api/artworks', '/api/hall-of-fame'].includes(path) ? [invalid] : invalid)
         await assert.rejects(artworkRequest(path), /작품을 불러오지 못했습니다/)
       }
@@ -79,23 +79,17 @@ test('photo selection connects labels and controls and renders loading, invalid 
   } finally { await server.close() }
 })
 
-test('error views conceal diagnostics and provide recovery; next-work loading retains the preceding work', async () => {
+test('collection and hall error views conceal diagnostics and provide recovery', async () => {
   const server = await createServer({ server: { middlewareMode: true, ws: false }, appType: 'custom' })
   try {
     const { ResourceNotice } = await server.ssrLoadModule('/src/ArtworkPages.jsx')
     const { HallExhibition } = await server.ssrLoadModule('/src/HallOfFame.jsx')
-    const { RandomExhibition } = await server.ssrLoadModule('/src/RandomArtwork.jsx')
-    for (const Component of [ResourceNotice, HallExhibition, RandomExhibition]) {
-      const html = renderToStaticMarkup(React.createElement(Component, { resource: { status: 'error', error: { message: 'SQL debug trace', status: 503 }, data: null }, onNext() {} }))
+    for (const Component of [ResourceNotice, HallExhibition]) {
+      const html = renderToStaticMarkup(React.createElement(Component, { resource: { status: 'error', error: { message: 'SQL debug trace', status: 503 }, data: null } }))
       assert.doesNotMatch(html, /SQL|debug|trace/)
       assert.match(html, /role="alert"/)
       assert.match(html, /<button[^>]*>다시/)
       assert.match(html, /href="\/gallery"/)
     }
-    const loading = renderToStaticMarkup(React.createElement(RandomExhibition, { resource: { status: 'success', data: artwork, pending: true }, onNext() {} }))
-    assert.match(loading, /작은 사정/)
-    assert.match(loading, /disabled="" aria-busy="true"/)
-    assert.match(loading, /href="\/artworks\/1"/)
-    assert.match(loading, /<dt>좋아요<\/dt><dd>0<\/dd>/)
   } finally { await server.close() }
 })

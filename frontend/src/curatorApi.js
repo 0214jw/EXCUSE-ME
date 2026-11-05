@@ -9,7 +9,7 @@ export async function requestCurator(payload) {
       body: JSON.stringify(payload), signal: AbortSignal.timeout(30000), cache: 'no-store',
     })
     const data = await response.json()
-    if (!response.ok) throw new ApiError(serverMessage(response.status, 'curator'), response.status)
+    if (!response.ok) throw new ApiError(serverMessage(response.status, 'curator', data?.detail?.code), response.status)
     if (!Array.isArray(data.titles) || data.titles.length !== 3 ||
         !data.titles.every((title) => typeof title === 'string' && characterCount(title.trim()) >= 2 && characterCount(title.trim()) <= 50) ||
         new Set(data.titles.map((title) => title.trim())).size !== 3 ||

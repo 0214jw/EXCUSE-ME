@@ -4,8 +4,7 @@
 .hall-page .award-rank { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 18px; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--muted); }
 .hall-page .award-rank strong { font-family: Georgia, "Batang", serif; font-size: 22px; font-weight: 500; }
 .hall-page .award-rank > span { font-size: 8px; letter-spacing: .06em; }
-.hall-page .award-card--laureate .award-rank { padding-inline: 14px; border-color: var(--wine); background: var(--paper); color: var(--wine); }
-.hall-page .award-card--laureate .award-rank strong { font-size: 30px; }
+.hall-page .award-card--laureate .award-rank { justify-content: center; text-align: center; border-color: var(--wine); color: var(--wine); }
 @media (max-width: 600px) {
   .hall-page .hall-caption { font-size: 10px; }
   .hall-page .award-rank { margin-bottom: 12px; }

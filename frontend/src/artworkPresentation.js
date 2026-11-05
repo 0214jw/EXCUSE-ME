@@ -1,5 +1,20 @@
 import { apiBaseUrl } from './artworkApi.js'
 
+// Presentation only: stable across filters, sorting, and page reloads.
+export function artworkPosterTone(artwork) {
+  const tones = ['wine', 'paper', 'ink']
+  if (Number.isSafeInteger(artwork.id) && artwork.id > 0) return tones[(artwork.id - 1) % tones.length]
+  const categoryHash = Array.from(artwork.category || '').reduce((hash, character) => (hash * 31 + character.codePointAt(0)) >>> 0, 0)
+  return tones[categoryHash % tones.length]
+}
+
+export function artworkPosterExcerpt(content) {
+  const original = typeof content === 'string' ? content.trim() : ''
+  const sentence = original.match(/^[\s\S]*?[.!?。！？](?=\s|$)/u)?.[0] || original.split(/\r?\n/u).find(line => line.trim()) || ''
+  const characters = Array.from(sentence.replace(/\s+/gu, ' ').trim())
+  return characters.length > 120 ? `${characters.slice(0, 119).join('')}…` : characters.join('')
+}
+
 // Presentation fallback only: never overwrite the donated original or save this
 // template as an AI result. Later server-generated copy belongs in refined_description.
 export function artworkDescription(artwork) {

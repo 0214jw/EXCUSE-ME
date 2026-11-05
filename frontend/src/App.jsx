@@ -1,29 +1,37 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import HealthCheck from './HealthCheck.jsx'
 import { HomePage } from './MuseumPages.jsx'
 import { ArtworkDetailPage, GalleryPage, SubmitPage } from './ArtworkPages.jsx'
 import { getVisitorId } from './visitor.js'
 import ArtworkEditPage from './ArtworkEditPage.jsx'
 import HallOfFamePage from './HallOfFame.jsx'
-import RandomArtworkPage from './RandomArtwork.jsx'
+import { observeHeaderTheme } from './headerTheme.js'
 
 const notices = {
   detail: { title: '디자인 확인용 예시 작품입니다.', message: '이 작품과 작가명·좋아요 수는 가상이며 DB에 저장된 작품이 아닙니다. 실제 기증 작품은 상설 전시관 위쪽에서 감상할 수 있습니다.' },
 }
 
-function Brand() {
-  return <a className="brand" href="/" aria-label="EXCUSE ME! 박물관 홈"><span className="brand-symbol" aria-hidden="true">✳</span><span>EXCUSE ME!<small>THE MUSEUM OF EXCUSES</small></span></a>
+function Brand({ monochrome = false }) {
+  return <a className="brand" href="/" aria-label="EXCUSE ME! 박물관 홈">{monochrome ? <svg className="brand-symbol" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="4" aria-hidden="true"><path d="M24 3v42M3 24h42M9 9l30 30M9 39L39 9" /></svg> : <span className="brand-symbol" aria-hidden="true">✳</span>}<span>EXCUSE ME!<small>THE MUSEUM OF EXCUSES</small></span></a>
 }
 
 export default function App() {
   // Plain links use Vite's SPA fallback, with native history and direct URL access.
   // These public pages do not require an additional routing library.
   const path = window.location.pathname.replace(/\/+$/, '') || '/'
+  const isLanding = path === '/'
+  const headerRef = useRef(null)
+  const [darkHeader, setDarkHeader] = useState(isLanding)
   const dialogRef = useRef(null)
   const [notice, setNotice] = useState(notices.detail)
   useEffect(() => {
     try { getVisitorId() } catch { /* Registration presents storage errors without blocking browsing. */ }
   }, [])
+  useLayoutEffect(() => observeHeaderTheme(
+    headerRef.current,
+    isLanding ? document.querySelector('.brand-intro') : null,
+    setDarkHeader,
+  ), [isLanding])
 
   function onUnavailable(kind) {
     setNotice(notices[kind])
@@ -31,14 +39,13 @@ export default function App() {
   }
 
   let page
-  if (path === '/') page = <HomePage onUnavailable={onUnavailable} />
+  if (path === '/') page = <HomePage />
   else if (path === '/gallery') page = <GalleryPage onUnavailable={onUnavailable} />
   else if (path === '/health') page = <HealthCheck />
   else if (path === '/submit') page = <SubmitPage />
   else if (path === '/hall-of-fame') page = <HallOfFamePage />
-  else if (path === '/random') page = <RandomArtworkPage />
-  else if (/^\/artworks\/[^/]+\/edit$/.test(path)) page = <ArtworkEditPage id={path.split('/')[2]} />
-  else if (/^\/artworks\/[^/]+$/.test(path)) page = <ArtworkDetailPage id={path.split('/')[2]} />
+  else if (/^\/artworks\/\d+\/edit$/.test(path)) page = <ArtworkEditPage id={path.split('/')[2]} />
+  else if (/^\/artworks\/\d+$/.test(path)) page = <ArtworkDetailPage id={path.split('/')[2]} />
   else {
     page = (
       <main id="main-content" className="page-width placeholder-page">
@@ -53,14 +60,13 @@ export default function App() {
   return (
     <>
       <a className="skip-link" href="#main-content">본문으로 건너뛰기</a>
-      <header className="site-header">
+      <header ref={headerRef} className={`site-header${isLanding ? ' site-header--landing' : ''}${darkHeader ? ' site-header--dark' : ''}`} data-theme={darkHeader ? 'dark' : 'light'}>
         <div className="page-width header-inner">
-          <Brand />
+          <Brand monochrome />
           <nav aria-label="상단 내비게이션">
             <a href="/" aria-current={path === '/' ? 'page' : undefined}>박물관 소개</a>
             <a href="/gallery" aria-current={path === '/gallery' ? 'page' : undefined}>상설 전시관</a>
             <a href="/hall-of-fame" aria-current={path === '/hall-of-fame' ? 'page' : undefined}>명예의 전당</a>
-            <a href="/random" aria-current={path === '/random' ? 'page' : undefined}>운명의 작품 만나기</a>
           </nav>
           <a className="header-donate" href="/submit" aria-current={path === '/submit' ? 'page' : undefined}>작품 기증하기 <span aria-hidden="true">↗</span></a>
         </div>

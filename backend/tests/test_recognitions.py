@@ -1,6 +1,7 @@
 """Phase 4 integration checks: disposable DB, no AI/provider requests."""
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
+from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
 import sqlite3
@@ -113,6 +114,7 @@ class RecognitionTests(unittest.TestCase):
         self.assertEqual(actual['recognized_by_me'], bool(stored))
 
     def test_top_ten_oldest_then_id_ties_and_category_popularity(self):
+        month = datetime.now(timezone(timedelta(hours=9))).replace(day=1, hour=12, minute=0, second=0, microsecond=0)
         rows = []
         for i in range(12):
             _, row = self.create(title=f'전시 작품 {i}', category='운동' if i % 2 else '약속')
@@ -120,7 +122,7 @@ class RecognitionTests(unittest.TestCase):
             # Intentionally reverse creation dates vs IDs to test both tie levels.
             with closing(sqlite3.connect(self.db_path)) as db:
                 db.execute('UPDATE artworks SET created_at=? WHERE id=?',
-                           (f'2026-01-{12 - i // 2:02d}T00:00:00.000000+00:00', row['id']))
+                           (month.replace(day=12 - i // 2).astimezone(timezone.utc).isoformat(timespec='microseconds'), row['id']))
                 db.commit()
             for _ in range(i % 3):
                 self.vote(row, str(uuid4()))

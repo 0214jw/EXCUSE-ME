@@ -24,11 +24,11 @@ import main
 import paintings
 
 
-def png():
+def png(width=768, height=1024):
     def chunk(kind, data):
         return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff)
-    return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', 1024, 1024, 8, 2, 0, 0, 0))
-            + chunk(b'IDAT', zlib.compress((b'\x00' + b'\xff' * 3072) * 1024)) + chunk(b'IEND', b''))
+    return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0))
+            + chunk(b'IDAT', zlib.compress((b'\x00' + b'\xff' * (width * 3)) * height)) + chunk(b'IEND', b''))
 
 
 class PaintingTests(unittest.TestCase):
@@ -72,7 +72,10 @@ class PaintingTests(unittest.TestCase):
         self.transport.assert_called_once()
         request = self.transport.call_args.args[0]
         body = json.loads(request.data)
-        self.assertEqual((body['model'], body['quality'], body['size'], body['n']), ('gpt-image-2', 'medium', '1024x1024', 1))
+        self.assertEqual((body['model'], body['quality'], body['size'], body['n']), ('gpt-image-2', 'medium', '768x1024', 1))
+        self.assertEqual(result['size'], '768x1024')
+        self.assertIn('vertical 3:4 canvas', body['prompt'])
+        self.assertIn('central 80% of both width and height', body['prompt'])
         self.assertIn(self.values['content'], body['prompt'])
         self.assertIn(self.values['refined_description'], body['prompt'])
         self.assertIn('No frame, letters', body['prompt'])
@@ -92,6 +95,24 @@ class PaintingTests(unittest.TestCase):
         self.assertEqual(self.counts(), 1)
         self.assertEqual(paintings.cleanup_previews(time.time() + 172800), 0)
         self.assertEqual(main.get_artwork_image(created['id']).body, png())
+
+    def test_portrait_dimensions_meet_provider_limits_and_wrong_response_is_not_saved(self):
+        width, height = paintings.DIMENSIONS
+        self.assertEqual(width * 4, height * 3)
+        self.assertEqual((width % 16, height % 16), (0, 0))
+        self.assertTrue(655360 <= width * height <= 8294400)
+        self.assertLess(max(width, height), 3840)
+        paintings.validate_png(png())
+        for dimensions in [(1024, 1024), (1024, 768), (1024, 1536)]:
+            with self.subTest(dimensions=dimensions), self.assertRaises(ValueError):
+                paintings.validate_png(png(*dimensions))
+        self.transport.side_effect = lambda *args, **kwargs: BytesIO(json.dumps({'data': [{'b64_json': base64.b64encode(png(1024, 1024)).decode()}]}).encode())
+        with self.assertRaises(HTTPException) as error:
+            self.generate()
+        self.assertEqual(error.exception.status_code, 502)
+        self.transport.assert_called_once()
+        self.assertFalse(list(paintings.STORAGE.glob('*.png')))
+        self.assertEqual(self.counts(), 0)
 
     def test_disabled_missing_key_and_invalid_input_never_call_provider(self):
         for env in ({'OPENAI_IMAGE_ENABLED': '0'}, {'OPENAI_API_KEY': ''}):

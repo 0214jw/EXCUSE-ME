@@ -21,7 +21,7 @@ export function StyleChoices({ name, value, onChange, generated = false }) {
 
 export function CreationPreview({ src, fileName, error, onImageError, generated = false }) {
   return (
-    <figure className="creation-preview">
+    <figure className={`creation-preview${generated ? ' creation-preview--generated' : ''}`}>
       <div className="creation-preview-frame">
         {src && !error ? <img src={src} alt={`선택한 원본 사진 미리보기: ${fileName}`} onError={onImageError} /> : <div className="creation-preview-empty">
           <span aria-hidden="true">✳</span>
@@ -46,11 +46,11 @@ export function GeneratedCreation({ painting, curatorBusy = false }) {
       <p className="creation-option-heading">핑계에서 시작하는 회화 <span className="creation-badge">AI 이미지 생성</span></p>
       <p className="creation-help">작품명·원문·확인된 작품 설명을 바탕으로 회화를 제작합니다. AI 큐레이터의 글 추천과 별개의 유료 요청입니다. 입력 내용은 OpenAI에 전송됩니다.</p>
       <fieldset disabled={loading}><StyleChoices generated name="generated_style" value={painting.style} onChange={painting.setStyle} /></fieldset>
-      <p className="creation-help">GPT Image 2 · medium · 1024×1024 · 1장. 예상 출력 비용 약 US $0.053 + 입력 비용. 다시 생성할 때마다 비용이 발생할 수 있습니다. 공유 키 보호 설정이 켜져 있어야 사용할 수 있습니다.</p>
+      <p className="creation-help">GPT Image 2 · medium · 768×1024 · 3:4 세로 · 1장. 입력·이미지 출력 사용량에 따라 비용이 발생합니다. 다시 생성할 때마다 비용이 발생할 수 있습니다. 공유 키 보호 설정이 켜져 있어야 사용할 수 있습니다.</p>
       <button type="button" className="museum-button secondary creation-generate-button" disabled={loading || curatorBusy} onClick={painting.generate}>{loading ? '회화를 제작하는 중… (최대 약 2분)' : state.result ? '작품 이미지 다시 생성하기 (유료)' : '작품 이미지 생성하기'}</button>
       <p role="status" aria-live="polite" className="creation-help">{loading ? '한 장을 제작하고 있습니다. 자동 재시도하지 않습니다. 입력 내용은 유지됩니다.' : '버튼을 누를 때만 생성합니다. 생성 결과는 기증 전까지 공개되지 않으며 24시간 동안 기증할 수 있습니다.'}</p>
       {state.error && <p className="field-error" role="alert">{state.error}</p>}
-      {state.result ? <figure className="creation-preview"><div className="creation-preview-frame">
+      {state.result ? <figure className="creation-preview creation-preview--generated"><div className="creation-preview-frame">
         {previewFailed ? <p role="alert">미리보기를 읽을 수 없습니다. 이미지 기증을 진행하지 마세요. 텍스트 기증은 가능합니다.</p> : <img src={state.result.preview_data_url} alt="기증 전 확인하는 AI 생성 회화" onLoad={() => setLoadedPreview(state.result.image_token)} onError={() => {
           setFailedPreview(state.result.image_token)
           painting.dispatch({ type: 'invalidate' })

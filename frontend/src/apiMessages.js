@@ -1,6 +1,6 @@
 // Server/proxy details may contain technical diagnostics. Keep the HTTP status
 // for client behavior, and show only our own messages and field hints.
-export function serverMessage(status, context = 'artwork') {
+export function serverMessage(status, context = 'artwork', code) {
   if (context === 'photo') {
     if (status === 413) return '사진은 5MB 이하로 선택해 주세요.'
     if (status === 422) return '사진을 읽을 수 없습니다. 5MB 이하의 JPG, PNG, WEBP 정지 이미지를 선택해 주세요. 최대 4천만 화소까지 지원합니다.'
@@ -11,6 +11,23 @@ export function serverMessage(status, context = 'artwork') {
   }
   if (context === 'curator' || context === 'painting') {
     const advice = context === 'curator' ? '추천 없이 텍스트 기증 가능합니다.' : '입력은 유지됩니다. 이미지 없이 텍스트로 기증할 수 있습니다.'
+    const curatorReasons = {
+      curator_not_configured: '서버에 AI 큐레이터 키가 설정되어 있지 않습니다.',
+      curator_invalid_configuration: 'AI 큐레이터의 서버 모델·시간 제한 설정을 확인해 주세요.',
+      curator_authentication_failed: 'AI 서비스 인증에 실패했습니다. 서버의 키와 프로젝트 접근 설정을 확인해 주세요.',
+      curator_access_denied: 'AI 서비스 접근이 거부되었습니다. 프로젝트 권한과 접근 설정을 확인해 주세요.',
+      curator_model_unavailable: '설정된 AI 모델을 찾을 수 없거나 접근할 수 없습니다. 서버 모델 설정을 확인해 주세요.',
+      curator_quota_exceeded: 'OpenAI 잔액 또는 사용 한도에 도달했습니다. 사용량과 결제 설정을 확인해 주세요.',
+      curator_provider_rate_limited: 'OpenAI 요청이 일시적으로 제한되었습니다. 잠시 후 다시 시도해 주세요.',
+      curator_request_rejected: 'AI 요청 설정이 거절되었습니다. 서버의 모델과 요청 설정을 확인해 주세요.',
+      curator_provider_unavailable: 'AI 서비스가 일시적으로 응답하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      curator_network_error: 'AI 서비스에 연결하지 못했습니다. 서버의 네트워크 연결을 확인해 주세요.',
+      curator_timeout: '응답 대기 시간이 지났습니다.',
+      curator_incomplete_response: 'AI 응답이 끝까지 생성되지 않아 사용하지 않았습니다.',
+      curator_invalid_response: 'AI 응답이 제목·작품 설명 형식에 맞지 않아 사용하지 않았습니다.',
+      curator_response_refused: 'AI가 이번 작품 추천을 제공하지 않았습니다. 입력 내용을 확인해 주세요.',
+    }
+    if (context === 'curator' && typeof code === 'string' && Object.hasOwn(curatorReasons, code)) return `${curatorReasons[code]} ${advice} 자동 재시도하지 않습니다.`
     const reason = status === 429 ? '요청이 많습니다. 잠시 후 다시 시도해 주세요.'
       : status === 409 ? '앞선 요청이 처리 중이거나 이미 완료되었습니다. 결과를 확인해 주세요.'
       : status === 422 ? '작품명과 핑계 내용을 확인해 주세요.'

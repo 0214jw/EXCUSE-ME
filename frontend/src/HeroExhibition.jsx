@@ -1,13 +1,10 @@
 import { useState } from 'react'
 import sculptureImage from './assets/the-birth-of-an-excuse-cutout.png'
-import antiqueFrame from './assets/museum-antique-gold-frame.png'
 import './HeroExhibition.css'
 
 const backgroundStudies = [
-  { number: '01', tone: 'wine', quote: '미완성이 아니라,\n숙성 중입니다.' },
-  { number: '02', tone: 'ink', quote: '마음은 벌써\n도착했습니다.' },
-  { number: '03', tone: 'paper', quote: '의지는 있었으나,\n중력이 강했습니다.' },
-  { number: '04', tone: 'olive', quote: '알람과 저의\n진술이 다릅니다.' },
+  { number: '01', quote: '미완성이 아니라,\n숙성 중입니다.' },
+  { number: '02', quote: '의지는 있었으나,\n중력이 강했습니다.' },
 ]
 
 export default function HeroExhibition() {
@@ -23,11 +20,10 @@ export default function HeroExhibition() {
       <div className="poster-wall">
         <div className="poster-gallery" aria-hidden="true">
           {backgroundStudies.map((study) => (
-            <div className={'poster-frame poster-frame-' + study.number + ' poster-frame-' + study.tone} key={study.number}>
-              <span className="poster-frame-stage">
-                <span className="poster-frame-canvas"><span>{study.quote}</span><small>EXCUSE STUDY / {study.number}</small></span>
-                <img className="poster-frame-overlay" src={antiqueFrame} width="1024" height="1536" alt="" decoding="async" />
-              </span>
+            <div className={'poster-study poster-study-' + study.number} key={study.number}>
+              <span className="poster-study-index">EXCUSE STUDY / {study.number}</span>
+              <span className="poster-study-quote">{study.quote}</span>
+              <span className="poster-study-note">THE MUSEUM OF EXCUSES</span>
             </div>
           ))}
         </div>
@@ -56,7 +52,6 @@ export default function HeroExhibition() {
           <figcaption className="poster-object-caption">디지털 조형물 · 전시 연출</figcaption>
         </figure>
 
-        <span className="poster-side-note" aria-hidden="true">EVERY EXCUSE DESERVES AN EXHIBITION.</span>
         <span className="poster-edition" aria-hidden="true">EXHIBITION / 01</span>
       </div>
 

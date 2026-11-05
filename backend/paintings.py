@@ -26,7 +26,9 @@ from urllib.request import build_opener
 from database import connection
 
 MODEL = "gpt-image-2"
-SIZE = "1024x1024"
+# Exact 3:4 portrait, within GPT Image 2's documented 16px/pixel limits.
+SIZE = "768x1024"
+DIMENSIONS = tuple(map(int, SIZE.split("x")))
 QUALITY = "medium"
 TIMEOUT = 120
 RESERVATION_CENTS = 10  # Conservative application reservation, NOT a provider billing cap.
@@ -95,7 +97,7 @@ def validate_png(raw):
         if zlib.crc32(kind + data) & 0xffffffff != crc:
             raise ValueError("Invalid PNG checksum")
         if first:
-            if kind != b"IHDR" or length != 13 or struct.unpack(">II", data[:8]) != (1024, 1024):
+            if kind != b"IHDR" or length != 13 or struct.unpack(">II", data[:8]) != DIMENSIONS:
                 raise ValueError("Unexpected PNG dimensions")
             first = False
         if kind == b"IDAT" and length:
@@ -154,6 +156,9 @@ def make_prompt(data):
     source = {"title": data.title, "original_excuse": data.content,
               "curator_description": data.refined_description, "category": data.category}
     return ("Create one museum-quality standalone fine-art painting, not a photograph of a framed painting. "
+            "Compose for a vertical 3:4 canvas. Keep important subjects and meaningful details fully inside "
+            "the central 80% of both width and height, with breathing room on all four edges. "
+            "Do not crop heads, hands, or other essential subject details at the canvas boundaries. "
             "Use sophisticated composition, subtle symbolic interpretation of an everyday excuse, expressive light, "
             "material texture, convincing handcrafted marks and restrained humor. Avoid generic AI illustration, "
             "mascots, cartoons and glossy 3D rendering. No frame, letters, captions, signatures or watermarks. "

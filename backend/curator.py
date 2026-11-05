@@ -154,17 +154,41 @@ class CuratorGate:
 gate = CuratorGate()
 
 
+def curator_error(status, reason):
+    # Only app-owned categories leave the server. Never relay provider messages.
+    return HTTPException(status, {"code": "curator_" + reason})
+
+
+def provider_error_reason(error):
+    if error.code == 429:
+        try:
+            raw = error.read(8193)
+            payload = json.loads(raw) if len(raw) <= 8192 else {}
+            detail = payload.get("error", {}) if isinstance(payload, dict) else {}
+            if isinstance(detail, dict):
+                quota_codes = {"insufficient_quota", "credit_balance_exhausted", "billing_hard_limit_reached",
+                               "billing_not_active", "organization_spend_limit_exceeded",
+                               "project_spend_limit_exceeded", "organization_usage_limit_exceeded"}
+                if detail.get("code") in quota_codes or detail.get("type") == "insufficient_quota":
+                    return "quota_exceeded"
+        except (OSError, ValueError, TypeError):
+            pass
+        return "provider_rate_limited"
+    return {400: "request_rejected", 401: "authentication_failed", 403: "access_denied",
+            404: "model_unavailable"}.get(error.code, "provider_unavailable")
+
+
 def generate_curator(data: CuratorInput, ip: str) -> CuratorResult:
     key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not key:
-        raise HTTPException(503, "AI 큐레이터가 아직 설정되지 않았습니다. 추천 없이 텍스트 작품을 기증할 수 있습니다.")
+        raise curator_error(503, "not_configured")
     model = os.environ.get("OPENAI_CURATOR_MODEL", DEFAULT_MODEL).strip()
     try:
         timeout = max(5., min(25., float(os.environ.get("OPENAI_CURATOR_TIMEOUT_SECONDS", "20"))))
         if not re.fullmatch(r"gpt-[A-Za-z0-9._-]{1,80}", model):
             raise ValueError()
     except ValueError:
-        raise HTTPException(503, "AI 큐레이터의 서버 설정을 확인해 주세요.") from None
+        raise curator_error(503, "invalid_configuration") from None
     payload = {
         "model": model, "store": False, "max_output_tokens": 1000,
         "reasoning": {"effort": "none"},
@@ -184,6 +208,8 @@ def generate_curator(data: CuratorInput, ip: str) -> CuratorResult:
             if len(raw) > 131072:
                 raise ValueError("Oversized response")
             result = json.loads(raw)
+            if isinstance(result, dict) and result.get("status") == "incomplete":
+                raise curator_error(502, "incomplete_response")
             if not isinstance(result, dict) or result.get("status") != "completed":
                 raise ValueError("Incomplete response")
             texts = []
@@ -191,20 +217,23 @@ def generate_curator(data: CuratorInput, ip: str) -> CuratorResult:
                 if item.get("type") == "message":
                     for part in item.get("content", []):
                         if part.get("type") == "refusal":
-                            raise ValueError("Refusal")
+                            raise curator_error(502, "response_refused")
                         if part.get("type") == "output_text":
                             texts.append(part.get("text", ""))
             draft = CuratorDraft.model_validate_json("".join(texts))
             return CuratorResult(titles=draft.titles, refined_description=" ".join(draft.description_sentences))
         except HTTPError as error:
-            error.close()
-            raise HTTPException(503, "AI 서비스 요청을 처리하지 못했습니다. 연결 설정이나 사용 한도를 확인해 주세요. 텍스트 기증은 가능합니다.") from None
+            try:
+                reason = provider_error_reason(error)
+            finally:
+                error.close()
+            raise curator_error(503, reason) from None
         except (TimeoutError, socket.timeout):
-            raise HTTPException(504, "AI 응답 제한 시간을 초과했습니다. 자동 재시도하지 않습니다. 작성 내용은 유지됩니다.") from None
+            raise curator_error(504, "timeout") from None
         except URLError as error:
             status = 504 if isinstance(error.reason, TimeoutError) else 503
-            raise HTTPException(status, "AI 서비스에 연결하지 못했습니다. 작성 내용은 유지되며 텍스트 기증은 가능합니다.") from None
+            raise curator_error(status, "timeout" if status == 504 else "network_error") from None
         except OSError:
-            raise HTTPException(503, "AI 연결을 완료하지 못했습니다. 자동 재시도하지 않으며 텍스트 기증은 가능합니다.") from None
+            raise curator_error(503, "network_error") from None
         except (ValueError, TypeError, KeyError, AttributeError):
-            raise HTTPException(502, "AI 응답이 작품 추천 형식에 맞지 않아 사용하지 않았습니다. 원하면 다시 생성해 주세요.") from None
+            raise curator_error(502, "invalid_response") from None

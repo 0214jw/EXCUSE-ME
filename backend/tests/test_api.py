@@ -244,7 +244,7 @@ class ArtworkApiTests(unittest.TestCase):
         payload.pop('author')
         status, error, _ = self.request('/api/curator', payload)
         self.assertEqual(status, 503)
-        self.assertIn('텍스트', error['detail'])
+        self.assertEqual(error['detail'], {'code': 'curator_not_configured'})
         self.assertNotIn('titles', error)
         self.assertEqual(self.request('/api/curator', {**payload, 'content': '짧음'})[0], 422)
         self.assertEqual(self.request('/api/artworks', self.payload())[0], 201)

@@ -5,10 +5,24 @@
   container-type: inline-size;
 }
 
-/* One un-stretched 1024 x 1536 PNG; its transparent opening was measured at
+.exhibition-stage { display: block; width: 100%; }
+.exhibition-surface { display: block; min-width: 0; }
+.exhibition-image { display: block; width: 100%; height: auto; object-fit: contain; }
+/* Uniform image slots without cropping existing square/landscape donations.
+   Text works and special framed exhibitions keep their own proportions. */
+.exhibition-visual:not(.exhibition-visual--framed) .exhibition-stage[data-media="image"] { aspect-ratio: 3 / 4; border: 0; box-shadow: none; }
+.exhibition-visual:not(.exhibition-visual--framed) .exhibition-stage[data-media="image"] .exhibition-surface { height: 100%; }
+.exhibition-visual:not(.exhibition-visual--framed) .exhibition-image { height: 100%; object-fit: contain; object-position: center; border: 0; box-shadow: none; }
+.exhibition-visual:not(.exhibition-visual--framed) .exhibition-text { aspect-ratio: 4 / 3; height: auto; justify-content: center; padding: clamp(24px, 9cqw, 48px); }
+.exhibition-visual:not(.exhibition-visual--framed) .exhibition-edition,
+.exhibition-visual:not(.exhibition-visual--framed) .exhibition-signature { display: none; }
+.exhibition-visual:not(.exhibition-visual--framed) .exhibition-quote { font-size: clamp(20px, 7cqw, 32px); line-height: 1.8; font-weight: 500; }
+.exhibition-visual--large:not(.exhibition-visual--framed) .exhibition-quote { font-size: clamp(24px, 6cqw, 38px); }
+
+/* Special exhibitions only: one un-stretched 1024 x 1536 PNG; its opening was measured at
    x=190..834, y=228..1314. The artwork extends 3px underneath the inner lip. */
-.exhibition-stage { position: relative; display: block; width: 100%; aspect-ratio: 2 / 3; isolation: isolate; }
-.exhibition-surface {
+.exhibition-visual--framed .exhibition-stage { position: relative; aspect-ratio: 2 / 3; isolation: isolate; }
+.exhibition-visual--framed .exhibition-surface {
   position: absolute;
   z-index: 1;
   left: 18.26%;
@@ -32,7 +46,7 @@
   user-select: none;
   filter: drop-shadow(2px 5px 4px #24201f24);
 }
-.exhibition-image { display: block; width: 100%; height: 100%; object-fit: contain; }
+.exhibition-visual--framed .exhibition-image { height: 100%; }
 .exhibition-text { display: flex; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: space-between; gap: 14px; padding: clamp(12px, 2vw, 24px); background: var(--wine); color: var(--paper); text-align: center; }
 .exhibition-edition { flex-shrink: 0; max-width: 100%; font-size: 6px; line-height: 1.5; letter-spacing: .1em; }
 .exhibition-quote { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; min-height: 0; max-width: 100%; font-family: "Batang", "Noto Serif KR", Georgia, serif; font-size: clamp(15px, 1.5vw, 22px); line-height: 1.8; font-weight: 600; letter-spacing: -.04em; white-space: pre-line; overflow-wrap: anywhere; }
@@ -58,3 +72,20 @@
   .exhibition-edition { font-size: 5px; letter-spacing: .04em; }
   .exhibition-visual--large .exhibition-quote { -webkit-line-clamp: 5; font-size: 15px; }
 }
+
+/* Large viewing rooms show the original image rather than a list thumbnail. */
+.exhibition-visual--large:not(.exhibition-visual--framed) .exhibition-stage[data-media="image"] { aspect-ratio: auto; }
+.exhibition-visual--large:not(.exhibition-visual--framed) .exhibition-stage[data-media="image"] .exhibition-surface { height: auto; }
+.exhibition-visual--large:not(.exhibition-visual--framed) .exhibition-image { height: auto; object-fit: contain; }
+
+/* Gallery-only, equal-size works. Captions sit outside this measured 3:4 slot. */
+.exhibition-visual.exhibition-visual--gallery .exhibition-stage { position: relative; aspect-ratio: 3 / 4; overflow: hidden; border: 0; box-shadow: none; }
+.exhibition-visual.exhibition-visual--gallery .exhibition-surface { position: absolute; inset: 0; height: 100%; }
+.exhibition-visual.exhibition-visual--gallery .exhibition-image { height: 100%; object-fit: cover; object-position: center; }
+.exhibition-visual.exhibition-visual--gallery .exhibition-text { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; align-items: start; justify-content: normal; height: 100%; aspect-ratio: auto; gap: 24px; padding: clamp(24px, 10cqw, 40px); text-align: left; }
+.exhibition-visual--gallery .exhibition-poster-edition { display: block; font-size: clamp(8px, 3.2cqw, 10px); line-height: 1.6; letter-spacing: .09em; }
+.exhibition-visual.exhibition-visual--gallery .exhibition-quote { align-self: center; min-width: 0; width: 100%; font-family: inherit; font-size: clamp(22px, 9cqw, 36px); font-weight: 600; line-height: 1.65; letter-spacing: -.045em; white-space: normal; word-break: keep-all; overflow-wrap: anywhere; -webkit-line-clamp: 4; }
+.exhibition-visual--gallery .exhibition-poster-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: clamp(8px, 3.2cqw, 10px); line-height: 1.6; letter-spacing: .04em; }
+.exhibition-visual--gallery.exhibition-visual--wine .exhibition-text { background: var(--wine); color: var(--paper); }
+.exhibition-visual--gallery.exhibition-visual--paper .exhibition-text { background: var(--paper); color: var(--ink); }
+.exhibition-visual--gallery.exhibition-visual--ink .exhibition-text { background: var(--ink); color: var(--paper); }
