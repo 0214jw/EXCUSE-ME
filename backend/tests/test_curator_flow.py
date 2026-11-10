@@ -1,4 +1,4 @@
-"""Real HTTP application flow with explicitly mocked OpenAI transport and a temp DB."""
+"""Real HTTP application flow with explicitly mocked Gemini transport and a temp DB."""
 from pathlib import Path
 from contextlib import closing
 import os

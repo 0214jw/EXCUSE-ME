@@ -8,7 +8,7 @@ export function CuratorSuggestions({ curator, values, onChooseTitle, saving }) {
     <section className="curator-panel" aria-labelledby="curator-title">
       <div className="creation-heading"><h2 id="curator-title">AI 큐레이터</h2><span className="creation-badge">제목·설명 추천</span></div>
       <p className="creation-help">아래 원문 핑계와 카테고리를 입력한 뒤 추천받아 보세요. 제목은 비워도 됩니다. AI 이미지 생성과는 별개의 글쓰기 도움 기능입니다.</p>
-      <p className="curator-privacy">버튼을 누르면 원문 핑계·현재 작품명·카테고리를 OpenAI에 보내 제목 3개와 작품 설명을 함께 요청합니다. 자동 호출·자동 재시도는 하지 않습니다.</p>
+      <p className="curator-privacy">버튼을 누르면 원문 핑계·현재 작품명·카테고리를 Google Gemini에 보내 제목 3개와 작품 설명을 함께 요청합니다. 자동 호출·자동 재시도는 하지 않습니다.</p>
       <button type="button" className="museum-button secondary" disabled={saving || state.status === 'loading'} onClick={generate}>{state.status === 'loading' ? '큐레이터의 추천을 기다리는 중…' : state.titles.length ? '다시 생성하기' : 'AI 큐레이터에게 작품 추천받기'}</button>
       {state.status === 'loading' && <p className="creation-help" role="status">제목과 설명을 한 번에 요청하고 있습니다. 입력 내용은 계속 수정할 수 있습니다.</p>}
       {state.error && <p className="field-error" role="alert">{state.error}</p>}

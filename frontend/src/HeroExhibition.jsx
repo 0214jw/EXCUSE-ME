@@ -1,32 +1,32 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import sculptureImage from './assets/the-birth-of-an-excuse-cutout.png'
+import useArtworkResource from './useArtworkResource.js'
+import HeroArtworkAssembly from './HeroArtworkAssembly.jsx'
+import { observeHeroAssembly, selectHeroArtworks } from './heroAssembly.js'
 import './HeroExhibition.css'
-
-const backgroundStudies = [
-  { number: '01', quote: '미완성이 아니라,\n숙성 중입니다.' },
-  { number: '02', quote: '의지는 있었으나,\n중력이 강했습니다.' },
-]
 
 export default function HeroExhibition() {
   const [imageUnavailable, setImageUnavailable] = useState(false)
+  const resource = useArtworkResource('/api/artworks')
+  const artworks = selectHeroArtworks(resource.status === 'success' ? resource.data : null)
+  const scene = useRef(null), pin = useRef(null), installation = useRef(null)
+  const hasArtworks = artworks.length > 0
+
+  useLayoutEffect(() => {
+    return observeHeroAssembly(scene.current, pin.current, installation.current, document.querySelector('.site-header'))
+  }, [hasArtworks, resource.data])
 
   return (
-    <section className="poster-hero page-width" aria-labelledby="hero-title">
+    <section className="poster-hero" data-assembly={hasArtworks ? 'true' : 'false'} aria-labelledby="hero-title">
+     <div ref={scene} className="hero-scroll-scene" data-assembly={hasArtworks ? 'true' : 'false'}>
+      <div ref={pin} className="hero-pin">
       <div className="poster-topline">
         <p className="eyebrow">EXCUSE ME! / DIGITAL MUSEUM</p>
         <span>A COLLECTION OF BEAUTIFUL EXCUSES</span>
       </div>
 
-      <div className="poster-wall">
-        <div className="poster-gallery" aria-hidden="true">
-          {backgroundStudies.map((study) => (
-            <div className={'poster-study poster-study-' + study.number} key={study.number}>
-              <span className="poster-study-index">EXCUSE STUDY / {study.number}</span>
-              <span className="poster-study-quote">{study.quote}</span>
-              <span className="poster-study-note">THE MUSEUM OF EXCUSES</span>
-            </div>
-          ))}
-        </div>
+      <div ref={installation} className="hero-installation">
+       <div className="poster-wall">
 
         <h1 id="hero-title" className="poster-slogan" aria-label="EXCUSE ME! — The Birth of an Excuse">EXCUSE ME!</h1>
 
@@ -53,9 +53,13 @@ export default function HeroExhibition() {
         </figure>
 
         <span className="poster-edition" aria-hidden="true">EXHIBITION / 01</span>
+       </div>
+       <HeroArtworkAssembly artworks={artworks} />
       </div>
 
-      <div className="poster-information">
+      </div>
+     </div>
+      <div className="poster-information page-width">
         <div className="poster-label">
           <p className="eyebrow">The Birth of an Excuse</p>
           <h2>그럴듯한 사유</h2>

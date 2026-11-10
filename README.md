@@ -262,27 +262,32 @@ AI 큐레이터의 사용자 확인된 설명은 `refined_description`에 저장
 
 제목 변경만으로 재생성하지 않습니다. **다시 생성하기**를 눌렀을 때만 새 요청을 보냅니다. 원문/카테고리 수정 시 오래된 결과 안내를 표시하고, 원문·제목·카테고리·설명 수정 시 확인 체크를 해제합니다. 실패해도 작품 입력과 편집한 내용은 유지되며 AI 없이 기증할 수 있습니다.
 
-기본 모델은 **`gpt-5.6-terra`**입니다. 공식 문서의 mini급 지능·비용 균형과 구조화 출력 지원을 기준으로 선택했습니다. FastAPI가 `POST https://api.openai.com/v1/responses`를 한 번 호출하며 `reasoning.effort: none`, strict JSON Schema, `max_output_tokens: 1000`, `store: false`를 사용합니다. 서버가 제목 개수/길이/다양성, 한국어 설명 2~4문장을 다시 검사합니다. 문체·새 사실을 만들지 않는 정도는 사용자가 실제 결과로 확인해야 합니다. [모델](https://developers.openai.com/api/docs/models/gpt-5.6-terra), [구조화 출력](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses).
+텍스트 큐레이터는 **Gemini Developer API / `gemini-3.5-flash-lite`**를 사용합니다. 공식 문서에서 경량·저지연 안정 모델과 구조화 출력 지원을 확인해 선택했습니다. Python 표준 HTTP 기능으로 `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`를 한 번 호출합니다. `x-goog-api-key` 헤더, JSON Schema, 텍스트 출력만 사용하며 검색·파일·이미지·도구 호출은 없습니다. `candidateCount: 1`, `maxOutputTokens: 1000`, `thinkingLevel: MINIMAL`을 설정합니다. 서버가 제목 정확히 3개·길이·중복·한국어, 설명 2~4문장·총 1000자 이하를 검증하고 기존 `{titles, refined_description}` 형식으로 반환합니다. 프롬프트는 전체 해설 150~300자 정도를 요청하지만 실제 문체·사실 충실도는 사용자 확인이 필요합니다. [모델](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite), [API 규격](https://ai.google.dev/api/generate-content).
 
-API 키는 사용자가 [OpenAI API 키 설정](https://platform.openai.com/settings/organization/api-keys)에서 적절한 프로젝트의 키를 직접 발급합니다. 프로젝트의 사용량·지출 설정과 필요한 권한을 확인하고 키를 채팅·코드·브라우저·Git에 넣지 마세요. [공식 키 관리 안내](https://developers.openai.com/api/docs/guides/production-best-practices).
+큐레이터 키는 사용자가 [Google AI Studio](https://aistudio.google.com/apikeys)에서 발급해 `GEMINI_API_KEY`로 설정합니다. 프로젝트의 API 사용 권한과 할당량을 확인하고 키를 채팅·코드·브라우저·Git에 넣지 마세요. `OPENAI_API_KEY`는 기존 이미지 생성 전용이며 Gemini 키로 대체하거나 큐레이터의 대체 키로 사용하지 않습니다. 기존 공유 OpenAI 키의 잔액 오류는 Gemini 설정과 별개의 상태입니다.
 
-`backend/.env.example`에는 변수명과 빈 키만 제공합니다. 이 파일을 복사하는 것만으로는 자동 로드되지 않습니다. **백엔드 터미널에서만**, 아래처럼 숨김 입력으로 프로세스 환경변수를 설정한 후 서버를 실행하세요. 실행 중인 이전 백엔드는 먼저 해당 터미널에서 `Ctrl+C`로 종료합니다. `.env`나 저장소 설정을 덮어쓸 필요는 없습니다.
+`backend/.env.example`에는 변수명과 빈 키만 제공합니다. **백엔드는 `.env`를 자동 로드하지 않습니다.** Ubuntu에서는 `$HOME/EXCUSE-ME/backend/.env`를 nano로 편집한 뒤 같은 터미널에서 명시적으로 읽습니다. 기존 파일이 있다면 덮어쓰지 말고 키 이름과 값을 직접 수정하세요.
 
-```powershell
-Set-Location "C:\Users\aicam\Desktop\EXCUSE ME\backend"
-$curatorSecret = Read-Host "OpenAI API key" -AsSecureString
-$curatorPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($curatorSecret)
-try {
-  $env:OPENAI_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($curatorPointer)
-} finally {
-  [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($curatorPointer)
-}
-$env:OPENAI_CURATOR_MODEL = 'gpt-5.6-terra'
-$env:OPENAI_CURATOR_TIMEOUT_SECONDS = '20'
-.\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
+```bash
+cd "$HOME/EXCUSE-ME/backend"
+umask 077
+nano .env
+chmod 600 .env
+set -a
+source ./.env
+set +a
 ```
 
-`VITE_` 변수는 브라우저에 공개되므로 OpenAI 키를 넣지 않습니다. 키 없이 서버를 실행해도 일반 등록·조회는 정상이며 AI 버튼에는 설정 안내가 표시됩니다. 요청 본문·키·제공사 원본 오류를 로그에 남기지 않습니다. 키가 설정된 상태에서 버튼을 누르면 실제 유료 API 요청이 발생할 수 있습니다.
+nano에서 아래 값을 직접 입력하고 `Ctrl+O`, Enter로 저장한 뒤 `Ctrl+X`로 종료합니다. 키는 명령어나 로그에 출력하지 않습니다.
+
+```dotenv
+GEMINI_API_KEY='여기에_실제_키_입력'
+GEMINI_CURATOR_MODEL=gemini-3.5-flash-lite
+GEMINI_CURATOR_TIMEOUT_SECONDS=20
+OPENAI_IMAGE_ENABLED=0
+```
+
+`GEMINI_CURATOR_MODEL`과 제한 시간은 생략하면 위 기본값을 사용합니다. 이전 `OPENAI_CURATOR_MODEL`/`OPENAI_CURATOR_TIMEOUT_SECONDS`는 더 이상 읽지 않습니다. `VITE_` 변수는 브라우저에 공개되므로 Gemini/OpenAI 키를 넣지 않습니다. 키 없이 서버를 실행해도 일반 등록·조회는 정상이며 AI 버튼에는 설정 안내가 표시됩니다. 요청 본문·키·제공사 원본 오류를 로그에 남기지 않습니다. 설정을 읽은 환경에서 백엔드를 재시작해야 적용되며, 서비스 관리자 사용 시 해당 서비스에도 환경변수를 전달해야 합니다. 키가 설정된 상태에서 사용자가 추천 버튼을 누르면 실제 API 요청이 발생할 수 있습니다.
 
 기본 네트워크 제한 시간은 20초(설정은 5~25초로 제한), 브라우저는 30초입니다. 자동 재시도·리다이렉트 재요청은 없습니다. 단일 프로세스 메모리 기준 10분간 방문객 5회·연결 IP 10회·전체 30회, 동시 2건으로 제한합니다. 동일 방문객/IP의 진행 중 요청과 요청 UUID 재전송은 차단합니다. 실패 시도도 횟수에 포함하며 재시작 시 한도가 초기화됩니다. 여러 worker/서버 사이의 공유 제한이나 정식 인증은 이번 범위가 아닙니다.
 
@@ -295,7 +300,7 @@ $env:OPENAI_CURATOR_TIMEOUT_SECONDS = '20'
 5. 원문을 수정해 오래된 추천 안내·확인 해제를 확인합니다. 다시 생성 중 빠른 클릭을 반복해도 중복 요청이 생기지 않아야 합니다.
 6. 설명 확인을 선택하지 않거나 AI 요청이 실패해도 기존 텍스트 기증이 가능해야 합니다. 사진·미완료 AI 이미지의 기증 차단도 유지되어야 합니다.
 
-최초 구현 당시 에이전트 작업 환경에는 키가 없어 실제 OpenAI 생성 API를 호출하지 않았습니다. 이후 사용자가 **실제 API의 제목 3개 추천·미술관 스타일 설명 표시·결과 UI**를 브라우저에서 확인했습니다. 이번 저장 작업에서는 추가 실제 호출을 하지 않고 모의 전송 테스트만 재실행했습니다.
+과거 OpenAI 큐레이터의 사용자 확인 기록은 이전 제공사의 결과입니다. Gemini 전환은 모의 전송으로만 검증했으며 실제 Gemini 호출은 하지 않았습니다. 실제 키 권한·할당량·모델 접근·응답 품질은 아직 미검증입니다.
 
 제목/설명 수정·확인 후 기증, 상세 재조회·새로고침/재시작 후 최종 설명 유지·원문 보존은 **코드 점검과 임시 DB 자동 검사 통과, 사용자 브라우저 미검증**입니다. 실제 모델의 다양한 원문에 대한 품질/사실 충실도, 지연·비용·실제 오류, 모바일·전체 브라우저 회귀도 미검증입니다. 다음으로 위 3~6번 저장·재조회 흐름을 직접 확인하면 됩니다. 코드는 연결되어 있으며 프로덕션에 가짜 추천 모드는 없습니다.
 
@@ -327,7 +332,7 @@ $env:OPENAI_CURATOR_TIMEOUT_SECONDS = '20'
 
 ```powershell
 # 기존 서버를 Ctrl+C로 종료한 뒤 backend 폴더에서 실행합니다.
-# OPENAI_API_KEY와 OPENAI_CURATOR_MODEL은 기존 설정을 그대로 사용합니다.
+# OPENAI_API_KEY는 이미지 생성용입니다. Gemini 큐레이터 설정과 별개입니다.
 $env:OPENAI_IMAGE_ENABLED = '1'
 $env:OPENAI_IMAGE_DAILY_LIMIT = '1'
 $env:OPENAI_IMAGE_TOTAL_LIMIT = '1'

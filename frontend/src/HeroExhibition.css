@@ -5,13 +5,6 @@
 
 .poster-wall { position: relative; isolation: isolate; height: clamp(580px, 48vw, 680px); }
 .poster-wall::after { content: ''; position: absolute; left: 0; right: 0; bottom: 40px; height: 1px; background: var(--line); z-index: 0; }
-.poster-gallery { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-.poster-study { position: absolute; display: flex; flex-direction: column; justify-content: space-between; width: 18%; max-width: 210px; aspect-ratio: 4 / 5; padding: 18px 14px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
-.poster-study-01 { left: 2%; top: 43%; }
-.poster-study-02 { right: 2%; top: 36%; }
-.poster-study-index { font-size: 9px; line-height: 1.5; letter-spacing: .06em; color: var(--wine); }
-.poster-study-quote { font-family: "Batang", Georgia, serif; font-size: clamp(14px, 1.4vw, 19px); line-height: 1.9; letter-spacing: -.04em; white-space: pre-line; }
-.poster-study-note { font-size: 8px; line-height: 1.6; letter-spacing: .05em; color: var(--muted); }
 
 .poster-slogan { position: absolute; z-index: 2; top: 30px; left: 50%; transform: translateX(-50%); width: 100%; margin: 0; color: var(--wine); font-family: "Arial Black", "Segoe UI", sans-serif; font-size: clamp(80px, 10.8vw, 152px); font-weight: 900; line-height: .98; letter-spacing: -.075em; text-align: center; white-space: nowrap; }
 .poster-object { position: absolute; z-index: 3; left: 50%; bottom: 48px; transform: translateX(-50%); width: min(42%, 430px); height: calc(100% - 158px); display: flex; align-items: end; justify-content: center; margin: 0; pointer-events: none; }
@@ -40,10 +33,6 @@
 }
 @media (max-width: 800px) {
   .poster-wall { height: 530px; }
-  .poster-study { width: 20%; padding: 14px 10px; }
-  .poster-study-01 { left: 0; top: 48%; }
-  .poster-study-02 { right: 0; top: 42%; }
-  .poster-study-note { display: none; }
   .poster-object { width: 55%; height: calc(100% - 140px); }
   .poster-plinth { width: 50%; }
   .poster-information { align-items: start; flex-direction: column; gap: 28px; }
@@ -57,7 +46,6 @@
   .poster-topline .eyebrow { font-size: 9px; }
   .poster-topline > span { display: none; }
   .poster-wall { height: 490px; }
-  .poster-gallery { display: none; }
   .poster-slogan { top: 28px; font-size: clamp(40px, 12vw, 72px); }
   .poster-object { width: 88%; height: calc(100% - 126px); }
   .poster-plinth { width: 76%; }
@@ -70,4 +58,49 @@
   .poster-actions { width: 100%; }
   .poster-actions .museum-button { flex: 1; padding-inline: 14px; gap: 12px; font-size: 12px; white-space: nowrap; }
   .poster-fallback { padding: 16px; }
+}
+
+/* One full-height exhibition, with existing information and CTAs after the pin. */
+.poster-hero { padding: 0; }
+.hero-scroll-scene { position: relative; }
+.hero-pin { display: flex; flex-direction: column; height: 100svh; min-height: 720px; padding: calc(var(--hero-header-height, 101px) + 18px) clamp(16px, 2.5vw, 48px) 24px; background: #f9fafb; }
+.hero-installation { position: relative; flex: 1; min-height: 0; width: 100%; container-type: inline-size; isolation: isolate; overflow: clip; --assembly-progress: 1; --hero-artwork-width: clamp(120px, 14vw, 280px); }
+.hero-installation > .poster-wall { position: absolute; inset: 0; height: auto; z-index: 2; pointer-events: none; }
+.hero-installation .poster-slogan { top: 8px; left: 0; transform: none; width: 100%; font-size: 15.8cqw; line-height: .9; text-align: left; }
+.hero-installation .poster-object { width: min(48vw, 740px); height: 62svh; max-height: calc(100% - 100px); bottom: 28px; }
+.hero-installation .poster-plinth { width: min(38vw, 560px); bottom: 20px; }
+.hero-installation .poster-wall::after { bottom: 20px; }
+.hero-installation .poster-object-caption { bottom: -20px; }
+.poster-hero > .poster-information { margin-block: 0; padding-block: 40px 64px; }
+.hero-assembly-gallery { position: absolute; inset: 0; z-index: 1; }
+.hero-donation { position: absolute; left: var(--artwork-x, var(--fallback-x, 9%)); top: var(--artwork-y, 64%); width: var(--hero-artwork-width); aspect-ratio: 3 / 4; transform: translate(-50%, -50%) translate3d(calc(var(--travel-x, 0px) * (1 - var(--assembly-progress))), calc(var(--travel-y, 0px) * (1 - var(--assembly-progress))), 0) rotate(calc(var(--travel-turn, 0deg) * (1 - var(--assembly-progress)))); opacity: calc(.8 + .2 * var(--assembly-progress)); }
+.hero-donation:nth-child(2) { --fallback-x: 26.5%; }
+.hero-donation:nth-child(3) { --fallback-x: 73.5%; }
+.hero-donation:nth-child(4) { --fallback-x: 91%; }
+.hero-donation > a { display: block; width: 100%; border: 0; box-shadow: none; }
+.hero-donation .exhibition-visual.exhibition-visual--gallery .exhibition-text { padding: clamp(12px, 10cqw, 24px); gap: 12px; }
+.hero-donation .exhibition-visual.exhibition-visual--gallery .exhibition-quote { font-size: clamp(16px, 11cqw, 28px); line-height: 1.6; }
+.hero-donation .exhibition-poster-edition, .hero-donation .exhibition-poster-footer { font-size: clamp(6px, 4cqw, 9px); line-height: 1.5; letter-spacing: .02em; }
+.hero-donation .exhibition-image-note { display: none; }
+.hero-installation:focus-within { --assembly-progress: 1 !important; }
+.hero-scroll-scene[data-pinned="true"] { height: var(--assembly-height); }
+.hero-scroll-scene[data-pinned="true"] > .hero-pin { position: sticky; top: 0; }
+.hero-scroll-scene[data-assembly-active="true"] .hero-donation { will-change: transform; }
+
+@media (max-width: 800px) {
+  .hero-pin { min-height: 900px; }
+  .hero-donation:nth-child(n+3) { display: none; }
+  .hero-installation { --hero-artwork-width: clamp(90px, 28vw, 200px); }
+  .hero-installation .poster-object { width: 86%; height: min(60svh, calc(100% - var(--hero-artwork-width) * 4 / 3 - 48px)); max-height: none; bottom: calc(var(--hero-artwork-width) * 4 / 3 + 24px); }
+  .hero-installation .poster-plinth { width: 68%; bottom: calc(var(--hero-artwork-width) * 4 / 3 + 16px); }
+  .hero-installation .poster-wall::after { bottom: calc(var(--hero-artwork-width) * 4 / 3 + 16px); }
+  .hero-donation { --fallback-x: 22%; top: var(--artwork-y, 83%); }
+  .hero-donation:nth-child(2) { --fallback-x: 78%; }
+  .hero-donation .exhibition-visual.exhibition-visual--gallery .exhibition-text { padding: 10cqw; gap: 8px; }
+  .hero-donation .exhibition-visual.exhibition-visual--gallery .exhibition-quote { font-size: clamp(12px, 11cqw, 22px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-donation { transform: translate(-50%, -50%); opacity: 1; will-change: auto !important; }
+  .hero-scroll-scene[data-pinned="true"] { height: auto; }
+  .hero-scroll-scene[data-pinned="true"] > .hero-pin { position: static; }
 }

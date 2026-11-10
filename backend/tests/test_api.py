@@ -39,7 +39,7 @@ class ArtworkApiTests(unittest.TestCase):
             [sys.executable, "-m", "uvicorn", getattr(cls, 'application', 'main:app'), "--host", "127.0.0.1", "--port", str(cls.port)],
             cwd=BACKEND,
             # Integration tests must never inherit a real provider key or make paid calls.
-            env={**os.environ, "EXCUSE_ME_DB_PATH": str(cls.db_path), "OPENAI_API_KEY": ""},
+            env={**os.environ, "EXCUSE_ME_DB_PATH": str(cls.db_path), "OPENAI_API_KEY": "", "GEMINI_API_KEY": ""},
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         for _ in range(100):
